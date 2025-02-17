@@ -1,0 +1,69 @@
+name: Build prod
+
+on:
+  workflow_dispatch:
+
+jobs:
+  go-lib:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: 1.23
+          cache-dependency-path: ${{ github.workspace }}/tts-server-lib
+
+      - name: Build tts-server-lib
+        run: |
+          cd $GITHUB_WORKSPACE/.github/scripts
+          chmod +x *.sh
+          ./build_gojni.sh
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: tts-server-lib
+          path: lib-gojni-aar/*.aar
+
+  build:
+    needs: go-lib
+    runs-on: ubuntu-latest
+    env:
+      outputs_dir: "${{ github.workspace }}/app/build/outputs"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+            name: tts-server-lib
+            path: ${{ github.workspace }}/lib-gojni-aar
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Init Signature
+        run: |
+          touch local.properties
+          echo ALIAS_NAME='${{ secrets.ALIAS_NAME }}' >> local.properties
+          echo ALIAS_PASSWORD='${{ secrets.ALIAS_PASSWORD }}' >> local.properties
+          echo KEY_PASSWORD='${{ secrets.KEY_PASSWORD }}' >> local.properties
+          echo KEY_PATH='./key.jks' >> local.properties
+          # 从Secrets读取无换行符Base64解码, 然后保存到到app/key.jks
+          echo ${{ secrets.KEY_STORE }} | base64 --decode > $GITHUB_WORKSPACE/app/key.jks
+
+      - name: Build with Gradle
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleAppDebug --build-cache --parallel --daemon --warning-mode all
+
+      - name: Upload APK To Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: "TTS-Server_debug"
+          path: ${{env.outputs_dir}}/apk/app/debug/*debug.apk
