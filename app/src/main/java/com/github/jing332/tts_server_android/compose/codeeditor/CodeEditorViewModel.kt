@@ -1,20 +1,29 @@
 package com.github.jing332.tts_server_android.compose.codeeditor
 
-import android.util.Log
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.ViewModel
-import com.drake.net.utils.withMain
-import com.github.jing332.lib_gojni.CodeSyncServer
-import com.github.jing332.common.utils.runOnUI
-import kotlinx.coroutines.runBlocking
+import androidx.lifecycle.viewModelScope
+import com.github.jing332.common.LogEntry
+import com.github.jing332.script.JsBeautify
+import com.github.jing332.server.script.ScriptRemoteServer
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.launch
+import java.net.BindException
+import java.net.SocketException
 
-class CodeEditorViewModel : ViewModel() {
+class CodeEditorViewModel(val app: Application) : AndroidViewModel(app) {
     companion object {
         const val TAG = "CodeEditorViewModel"
 
         const val SYNC_ACTION_DEBUG = "debug"
     }
 
-    private var server: CodeSyncServer? = null
+    private var server: ScriptRemoteServer? = null
+
+    private var mError = MutableStateFlow<Error>(Error.Empty)
+    internal val error get() = mError.asSharedFlow()
 
     // 代码同步服务器
     fun startSyncServer(
@@ -25,43 +34,50 @@ class CodeEditorViewModel : ViewModel() {
         onAction: (name: String, body: ByteArray?) -> Unit
     ) {
         if (server != null) return
-        server = CodeSyncServer()
-        server?.init(
-            onLog = { level, msg ->
-                Log.i(TAG, "$level $msg")
-            },
-            onAction = { name, body ->
-                runOnUI {
-                    if (name == SYNC_ACTION_DEBUG) {
-                        onDebug.invoke()
-                    } else
-                        onAction.invoke(name, body)
-                }
-            },
-            onPull = {
-                runBlocking {
-                    return@runBlocking withMain {
-                        return@withMain onPull.invoke()
-                    }
-                }
-            },
-            onPush = { code ->
-                runOnUI {
-                    onPush.invoke(code)
-                }
+        server = ScriptRemoteServer(port, object : ScriptRemoteServer.Callback {
+            override fun pull(): String = onPull()
+
+            override fun push(code: String) = onPush(code)
+
+            override fun action(name: String) {
+                if (name == SYNC_ACTION_DEBUG)
+                    onDebug()
+                else onAction.invoke(name, null)
             }
-        )
 
-        server?.start(port.toLong())
-    }
+            override fun log(): List<LogEntry> = emptyList()
 
-    private fun closeSyncServer() {
-        server?.shutdown()
-        server = null
+        }).apply {
+            try {
+                start(wait = false)
+            } catch (e: BindException) {
+                mError.tryEmit(Error.PortConflict)
+            } catch (e: SocketException) {
+                mError.tryEmit(Error.Socket(e.localizedMessage ?: e.toString()))
+            } catch (e: Exception) {
+                mError.tryEmit(Error.Other(e))
+            } finally {
+//                server = null
+            }
+        }
     }
 
     override fun onCleared() {
         super.onCleared()
-        closeSyncServer()
+
+        server?.stop()
+        server = null
     }
+
+    private val beautifier by lazy { JsBeautify(app) }
+    fun formatCode(code: String): String {
+        return beautifier.format(code)
+    }
+}
+
+internal sealed interface Error {
+    data object Empty : Error
+    data object PortConflict : Error
+    data class Socket(val message: String) : Error
+    data class Other(val e: Exception) : Error
 }

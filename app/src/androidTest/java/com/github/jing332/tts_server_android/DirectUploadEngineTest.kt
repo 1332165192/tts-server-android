@@ -1,17 +1,20 @@
 package com.github.jing332.tts_server_android
 
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.github.jing332.script_engine.core.ext.JsExtensions
+import androidx.test.platform.app.InstrumentationRegistry
+import com.github.jing332.script.withRhinoContext
+import com.github.jing332.script.simple.ext.JsExtensions
 import com.github.jing332.tts_server_android.model.rhino.direct_link_upload.DirectUploadEngine
 import org.junit.Test
 import org.junit.runner.RunWith
+import splitties.init.appCtx
 
 @RunWith(AndroidJUnit4::class)
 class DirectUploadEngineTest {
 
     @Test
     fun catBox() {
-        val ext = com.github.jing332.script_engine.core.ext.JsExtensions(app, "")
+        val ext = JsExtensions(app, "")
 
         val form = mutableMapOf<String, Any>()
 
@@ -46,12 +49,13 @@ class DirectUploadEngineTest {
                 },
             }
         """.trimIndent()
-        val engine = DirectUploadEngine(context = app, code = code)
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val engine = DirectUploadEngine(context, code = code)
         val list = engine.obtainFunctionList()
         println(list)
-        list.forEach {
-            it.invoke("jsonsjosnsjkosnsojsn").apply {
-//                println(keys)
+        withRhinoContext { cx->
+            list.forEach {
+                it.invoke(""" {"name":"123"} """)
             }
         }
     }

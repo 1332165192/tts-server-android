@@ -2,11 +2,10 @@ package com.github.jing332.tts_server_android.compose
 
 import android.os.Bundle
 import androidx.activity.compose.setContent
-import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -22,7 +21,7 @@ import com.github.jing332.tts_server_android.compose.theme.AppTheme
 import com.mikepenz.aboutlibraries.ui.compose.LibrariesContainer
 import com.mikepenz.aboutlibraries.ui.compose.LibraryDefaults
 
-class LibrariesActivity : AppCompatActivity() {
+class LibrariesActivity : ComposeActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -43,7 +42,7 @@ class LibrariesActivity : AppCompatActivity() {
                     navigationIcon = {
                         IconButton(onClick = { finish() }) {
                             Icon(
-                                Icons.Filled.ArrowBack,
+                                Icons.AutoMirrored.Default.ArrowBack,
                                 contentDescription = stringResource(id = R.string.nav_back)
                             )
                         }

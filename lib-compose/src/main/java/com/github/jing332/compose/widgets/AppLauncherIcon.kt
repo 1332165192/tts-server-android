@@ -40,22 +40,4 @@ fun AppLauncherIcon(modifier: Modifier, @DrawableRes resourceId: Int) {
         painter = adaptiveIconPainterResource(resourceId),
         contentDescription = "LOGO"
     )
-//    ResourcesCompat.getDrawable(
-//        LocalContext.current.resources,
-//        R.mipmap.ic_app_launcher_round, LocalContext.current.theme
-//    )?.let { drawable ->
-//        val bitmap = Bitmap.createBitmap(
-//            drawable.intrinsicWidth, drawable.intrinsicHeight,
-//            Bitmap.Config.ARGB_8888
-//        )
-//        val canvas = Canvas(bitmap)
-//        drawable.setBounds(0, 0, canvas.width, canvas.height)
-//        drawable.draw(canvas)
-//        Image(
-//            // painter = painterResource(R.mipmap.ic_launcher),
-//            bitmap = bitmap.asImageBitmap(),
-//            "LOGO",
-//            modifier = modifier
-//        )
-//    }
 }

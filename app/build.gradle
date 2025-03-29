@@ -5,6 +5,7 @@ plugins {
     id("kotlin-parcelize")
     id("com.google.devtools.ksp")
     id("com.mikepenz.aboutlibraries.plugin")
+    alias(libs.plugins.compose.compiler)
 }
 
 static def buildTime() {
@@ -22,6 +23,7 @@ def gitCommits = Integer.parseInt('git rev-list HEAD --count'.execute().text.tri
 android {
     compileSdk libs.versions.compileSdk.get().toInteger()
     namespace 'com.github.jing332.tts_server_android'
+
     defaultConfig {
         applicationId 'com.github.jing332.tts_server_android'
         minSdk libs.versions.minSdk.get().toInteger()
@@ -59,9 +61,14 @@ android {
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    lint {
+        checkReleaseBuilds false
+        checkDependencies  true
+    }
+
     signingConfigs {
         release {
-            //签名文件 从local.properties取值
+            // read sign from local.properties
             Properties pro = new Properties()
             InputStream input = project.rootProject.file("local.properties").newDataInputStream()
             pro.load(input)
@@ -83,13 +90,11 @@ android {
             signingConfig signingConfigs.release
             applicationIdSuffix ".debug"
             versionNameSuffix "_debug"
-            splits.abi.enable = false
-            splits.density.enable = false
         }
     }
     packagingOptions {
         resources {
-            excludes += ['META-INF/INDEX.LIST', 'META-INF/*.md']
+            excludes += ['META-INF/*']
         }
     }
 
@@ -106,38 +111,8 @@ android {
         }
     }
 
-    splits {
-        abi {
-            enable true
-            reset()
-
-            include 'x86_64', 'x86', 'armeabi-v7a', 'arm64-v8a'
-            universalApk true
-        }
-    }
-
-    compileOptions {
-        coreLibraryDesugaringEnabled true
-        sourceCompatibility JavaVersion.VERSION_17
-        targetCompatibility JavaVersion.VERSION_17
-    }
-    kotlinOptions {
-        jvmTarget = '17'
-    }
-
-    kotlin {
-        jvmToolchain(17)
-
-        /*sourceSets.all {
-            languageSettings {
-                languageVersion = "2.0"
-            }
-        }*/
-    }
-
-    // 修改apk文件名
-    android.applicationVariants.all { variant ->
-        variant.outputs.all { output ->
+    android.applicationVariants.configureEach { variant ->
+        variant.outputs.configureEach { output ->
             //noinspection GrDeprecatedAPIUsage
             def abiName = output.getFilter(com.android.build.OutputFile.ABI)
             if (abiName == null)
@@ -147,13 +122,19 @@ android {
         }
     }
 
-//    sourceSets {
-//        main {
-//            java {
-//                exclude 'tts_server_android/ui'
-//            }
-//        }
-//    }
+    compileOptions {
+        coreLibraryDesugaringEnabled true
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    kotlinOptions {
+        jvmTarget = '17'
+    }
+
+    kotlin {
+        jvmToolchain(17)
+    }
 
     buildFeatures {
         viewBinding true
@@ -161,31 +142,34 @@ android {
         compose true
     }
 
-    composeOptions {
-        kotlinCompilerExtensionVersion = libs.versions.composeComplile.get()
-    }
 }
 
 dependencies {
-    api(project(":lib-common"))
-    implementation(project(":lib-gojni"))
-    implementation(project(":lib-script-engine"))
-
     coreLibraryDesugaring(libs.desugar)
+    api(project(":lib-common"))
+    implementation(project(":lib-compose"))
+    implementation(project(":lib-script"))
+    implementation(project(":lib-tts"))
+    implementation(project(":lib-server"))
+
 
     implementation fileTree(include: ['*.jar', '*.aar'], dir: 'libs')
     implementation 'androidx.legacy:legacy-support-v4:1.0.0'
 
+    implementation(libs.logging)
+    implementation(libs.slf4j.api)
+//    implementation(libs.slf4j.simple)
+    implementation(libs.logback.android)
+
     implementation libs.activityKtx
     implementation libs.bundles.andorid.base
-//    implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
 
 
     implementation libs.kotlinx.coroutines.android
     implementation libs.kotlinx.serialization.json
 
     implementation(libs.bundles.markwon)
-    implementation(libs.bundles.ui)
+
 
     // Code Editor
     implementation(libs.bundles.codeEditor)
@@ -204,17 +188,13 @@ dependencies {
     implementation(libs.bundles.media3)
 
     implementation 'me.rosuh:AndroidFilePicker:1.0.1'
-    implementation("com.hankcs:hanlp:portable-1.8.4")
 
-    // https://github.com/gyf-dev/ImmersionBar
-    implementation 'com.geyifeng.immersionbar:immersionbar:3.2.2'
-    implementation 'com.geyifeng.immersionbar:immersionbar-ktx:3.2.2'
+    implementation(libs.hanlp)
 
 
     implementation(libs.bundles.about)
 
     implementation libs.bundles.accompanist
-
 
 
     implementation(libs.bundles.lifecycle)

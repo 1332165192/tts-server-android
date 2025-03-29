@@ -8,7 +8,6 @@ import androidx.core.graphics.drawable.IconCompat
 import com.github.jing332.tts_server_android.compose.systts.plugin.PluginManagerActivity
 import com.github.jing332.tts_server_android.compose.systts.replace.ReplaceManagerActivity
 import com.github.jing332.tts_server_android.compose.systts.speechrule.SpeechRuleManagerActivity
-import com.github.jing332.tts_server_android.ui.forwarder.MsForwarderSwitchActivity
 import com.github.jing332.tts_server_android.ui.forwarder.SystemForwarderSwitchActivity
 
 object ShortCuts {
@@ -31,16 +30,6 @@ object ShortCuts {
             .build()
     }
 
-
-    private fun buildMsSwitchShortCutInfo(context: Context): ShortcutInfoCompat {
-        val msSwitchIntent = buildIntent<MsForwarderSwitchActivity>(context)
-        return ShortcutInfoCompat.Builder(context, "forwarder_ms_switch")
-            .setShortLabel(context.getString(R.string.forwarder_ms))
-            .setLongLabel(context.getString(R.string.forwarder_ms))
-            .setIcon(IconCompat.createWithResource(context, R.drawable.ic_switch))
-            .setIntent(msSwitchIntent)
-            .build()
-    }
 
     private fun buildReplaceManagerShortCutInfo(context: Context): ShortcutInfoCompat {
         return ShortcutInfoCompat.Builder(context, "replace_manager")
@@ -72,7 +61,6 @@ object ShortCuts {
     fun buildShortCuts(context: Context) {
         ShortcutManagerCompat.setDynamicShortcuts(
             context, listOf(
-                buildMsSwitchShortCutInfo(context),
                 buildSysSwitchShortCutInfo(context),
                 buildReplaceManagerShortCutInfo(context),
                 buildSpeechManagerShortCutInfo(context),

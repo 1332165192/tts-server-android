@@ -111,13 +111,13 @@
     <string name="systts_set_dialogue_min_match_word_count">Set Chinese length for dialogue</string>
     <string name="systts_set_dialogue_min_info">The number of Chinese characters (including Chinese symbols) in the character\'s dialogue,
         that is, only when it is greater than or equal to this value, it will be read as a dialogue, otherwise the narration will be used.</string>
-    <string name="request_timeout">Set request timeout</string>
+    <string name="request_timeout">Request timeout</string>
     <string name="request_timeout_summary">After the waiting time for requesting audio exceeds the set value, the request will be canceled and retried automatically.</string>
     <string name="systts_http_edit_title">Edit custom TTS</string>
     <string name="systts_http_request_header">Http Request header</string>
     <string name="systts_sample_test_text">click the button on the right to test and play</string>
     <string name="systts_decode_audio">Decode audio</string>
-    <string name="systts_add_internal_tts">Add built-in TTS</string>
+    <string name="systts_add_ms_tts">Add built-in TTS</string>
     <string name="systts_add_custom_tts">Add custom TTS</string>
     <string name="off_multi_voice_use_global">Please turn off the multi-voice option to use single-voice model</string>
     <string name="use_dns_lookup_ip">Use DNS to resolve the API IP</string>
@@ -224,7 +224,7 @@
     <string name="md_checkbox_unchecked">Unchecked</string>
     <string name="md_checkbox_indeterminate">Indeterminate</string>
     <string name="systts_local_test_msg">Direct-Play is off \nSize: %1$d Kib \nSample rate: %2$d</string>
-    <string name="systts_set_standby">Set standby TTS</string>
+
     <string name="systts_local_params_int_must">Must be true or 1, false or 0</string>
     <string name="internal_player">Built-in player settings</string>
     <string name="built_in_player_not_enabled">⚠️[Built-in player] is not enabled</string>
@@ -242,8 +242,8 @@
     <string name="app_language_to_follow_tip_msg">If change fail, Please restart application</string>
     <string name="forwarder_sys_fail_audio_file">Synthesis failed: The audio file was not found</string>
     <string name="systts_engine_init_failed_timeout">Engine initialization failed: Timed out</string>
-    <string name="forwarder_systts">System TTS forwarder</string>
-    <string name="forwarder_sys_running">System TTS forwarder is running</string>
+    <string name="forwarder_systts">TTS forwarder</string>
+    <string name="forwarder_sys_running">TTS forwarder is running</string>
     <string name="language">Language</string>
     <string name="plugin_manager">Plugin Manager</string>
     <string name="error">Error</string>
@@ -347,7 +347,7 @@
     <string name="import_file_as">Import file as …</string>
     <string name="systts_no_speech_target_all">⚠️ Missing {Read Aloud} feature, using default! Please make sure to enable multiple language voice options.</string>
     <string name="stream_audio_mode">Stream audio</string>
-    <string name="stream_audio_mode_summary">Enabling streaming playback, i.e. downloading and playing at the same time, is not currently supported by the built-in TTS, and requires proactive adaptation of the plugin TTS.</string>
+    <string name="stream_audio_mode_summary">Enabling streaming playback</string>
     <string name="use_exo_decoder">Use ExoPlayer Decoder</string>
     <string name="use_exo_decoder_summary">ExoPlayer is a media player developed by Google, which has higher compatibility. Enabling it will directly use its internal decoder for audio decoding.</string>
     <string name="plugin_not_define_vars">This plugin does not define variable</string>
@@ -436,4 +436,42 @@
     <string name="clear_text_content">Clear the text</string>
     <string name="exclude_from_recent">Exclude From Recent</string>
     <string name="exclude_from_recent_summary">Hide this application in [Recent Tasks].</string>
+    <string name="not_support_audition">Auditions are not supported！</string>
+    <string name="systts_log_direct_play">Direct play：%1$s</string>
+    <string name="format_code">Format code</string>
+    <string name="undo">Undo</string>
+    <string name="redo">Redo</string>
+    <string name="config_empty_error">No available TTS configuration, please check if it is enabled.</string>
+    <string name="silent_audio">Fast-paced playback</string>
+    <string name="silent_audio_summary">Remove silent and pause parts from the audio</string>
+    <string name="loading_audio_stream">Loading stream: %1$s</string>
+    <string name="audio_decoding_error">Decoding error: %1$s</string>
+    <string name="audio_source_error">Source error: %1$s</string>
+    <string name="stream_handle_error">Stream error: %1$s</string>
+    <string name="use_standby_tts">Use fallback TTS: %1$s</string>
+    <string name="reach_retry_limit">Reached retry limit, skipping!</string>
+    <string name="migration_data">Migrate data</string>
+    <string name="systts_list_migration_desc">List data needs to be migrated to the new table structure.\nData is invaluable, please manually export the old data to prevent loss.</string>
+    <string name="missing_speech_rule">Missing speech rule: %1$s</string>
+    <string name="preset">Preset</string>
+    <string name="single_voice">Single voice</string>
+    <string name="missing_config">Missing configuration: %1$s</string>
+    <string name="config_load_error">Failed to load configuration: %1$s</string>
+    <string name="male">Male</string>
+    <string name="female">Female</string>
+    <string name="clear_cache_desc">When you need to update the voice list, try clearing the plugin cache to fetch the data from the network again.</string>
+    <string name="clear_cache_ok">Cache cleared successfully</string>
+    <string name="login">Login</string>
+    <string name="reload">Reload</string>
+    <string name="current_playing_bgm">Current background music: %1$s</string>
+    <string name="expended">Expanded</string>
+    <string name="collapsed">Collapsed</string>
+    <string name="no_new_version">No new version</string>
+    <string name="battery_optimization_whitelist_desc">Very important, necessary setting for background persistence</string>
+    <string name="forwarder">Forwarder</string>
+    <string name="divider_preference_desc">The following are sub-settings</string>
+    <string name="open_ra_tag_options">Open tag data options</string>
+    <string name="quick_edit">Quick edit</string>
+    <string name="switch_tag">Switch tag</string>
+    <string name="get_tag_name_failed">Failed to get tag name</string>
 </resources>

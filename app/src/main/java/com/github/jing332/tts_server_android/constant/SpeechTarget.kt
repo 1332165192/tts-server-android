@@ -1,7 +1,6 @@
 package com.github.jing332.tts_server_android.constant
 
 import androidx.annotation.IntDef
-import com.github.jing332.tts_server_android.App
 import com.github.jing332.tts_server_android.R
 import com.github.jing332.tts_server_android.app
 
@@ -10,7 +9,7 @@ import com.github.jing332.tts_server_android.app
 //    SpeechTarget.ASIDE,
 //    SpeechTarget.DIALOGUE,
     SpeechTarget.BGM,
-    SpeechTarget.CUSTOM_TAG
+    SpeechTarget.TAG
 )
 @Retention(AnnotationRetention.SOURCE)
 annotation class SpeechTarget {
@@ -24,7 +23,7 @@ annotation class SpeechTarget {
         const val DIALOGUE = 2 //对话
 
         const val BGM = 3 //背景音乐
-        const val CUSTOM_TAG = 4 // 自定义Tag
+        const val TAG = 4 // 自定义Tag
 
         fun toText(@SpeechTarget target: Int): String {
             return when (target) {

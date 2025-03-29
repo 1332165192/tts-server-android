@@ -9,8 +9,8 @@ import com.github.jing332.tts_server_android.compose.systts.ConfigImportBottomSh
 import com.github.jing332.tts_server_android.compose.systts.ConfigModel
 import com.github.jing332.tts_server_android.compose.systts.SelectImportConfigDialog
 import com.github.jing332.tts_server_android.constant.AppConst
-import com.github.jing332.tts_server_android.data.appDb
-import com.github.jing332.tts_server_android.data.entities.plugin.Plugin
+import com.github.jing332.database.dbm
+import com.github.jing332.database.entities.plugin.Plugin
 
 @Composable
 fun PluginImportBottomSheet(onDismissRequest: () -> Unit) {
@@ -27,7 +27,7 @@ fun PluginImportBottomSheet(onDismissRequest: () -> Unit) {
                 )
             },
             onSelectedList = {
-                appDb.pluginDao.insert(*it.map { plugin -> plugin as Plugin }.toTypedArray())
+                dbm.pluginDao.insert(*it.map { plugin -> plugin as Plugin }.toTypedArray())
 
                 it.size
             }

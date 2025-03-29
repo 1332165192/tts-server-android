@@ -1,11 +1,13 @@
 plugins {
     alias(libs.plugins.android.library)
     alias(libs.plugins.kotlin.android)
+    alias(libs.plugins.kotlin.parcelize)
+//    alias(libs.plugins.kotlin.serialization)
 }
 
 android {
     namespace = "com.github.jing332.lib_common"
-    compileSdk = 34
+    compileSdk = libs.versions.compileSdk.get().toInt()
 
     defaultConfig {
         minSdk = 21
@@ -36,6 +38,10 @@ dependencies {
     api(libs.hutool.crypto)
     api(libs.bundles.network)
     api(libs.bundles.media3)
+    api(libs.kotlin.result)
+    api(libs.kotlinx.serialization.json)
+    api(libs.apache.commons.text)
+    api(libs.logging)
 
     implementation(libs.coreKtx)
     implementation(libs.appcompat)

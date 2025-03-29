@@ -36,22 +36,23 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.lifecycleScope
 import com.drake.net.utils.withIO
-import com.github.jing332.lib_gojni.NativeUtils
 import com.github.jing332.tts_server_android.R
 import com.github.jing332.tts_server_android.compose.theme.AppTheme
 import com.github.jing332.compose.widgets.AppDialog
 import com.github.jing332.compose.widgets.LoadingContent
 import com.github.jing332.tts_server_android.constant.AppConst
 import com.github.jing332.common.utils.ClipboardUtils
+import com.github.jing332.common.utils.NetworkUtils
 import com.github.jing332.common.utils.longToast
 import com.github.jing332.common.utils.rootCause
 import com.github.jing332.common.utils.toast
+import com.github.jing332.tts_server_android.compose.ComposeActivity
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import java.util.UUID
 
 @Suppress("DEPRECATION")
-class ErrorDialogActivity : AppCompatActivity() {
+class ErrorDialogActivity : ComposeActivity() {
     companion object {
         const val ACTION_FINISH =
             "com.github.jing332.tts_server_android.ui.view.ErrorDialogActivity.ACTION_FINISH"
@@ -161,7 +162,7 @@ class ErrorDialogActivity : AppCompatActivity() {
                                         lifecycleScope.launch(Dispatchers.Main) {
                                             isLoading = true
                                             kotlin.runCatching {
-                                                val url = withIO { NativeUtils.uploadLog(str) }
+                                                val url = withIO { NetworkUtils.uploadLog(str)}
                                                 ClipboardUtils.copyText(url)
                                                 longToast(R.string.copied)
                                             }.onFailure {

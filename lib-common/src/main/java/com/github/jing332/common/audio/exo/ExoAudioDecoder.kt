@@ -4,26 +4,26 @@ import android.annotation.SuppressLint
 import android.content.Context
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
-import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.DefaultRenderersFactory
+import androidx.media3.exoplayer.ExoPlaybackException
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.audio.AudioSink
 import androidx.media3.exoplayer.source.MediaSource
 import com.drake.net.utils.withMain
-import com.github.jing332.common.audio.AudioDecoderException
 import com.github.jing332.common.audio.ExoPlayerHelper
-import kotlinx.coroutines.*
+import com.github.jing332.common.utils.runOnUI
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.suspendCancellableCoroutine
 import java.io.InputStream
 import java.nio.ByteBuffer
+import kotlin.coroutines.Continuation
+import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
 
 @SuppressLint("UnsafeOptInUsageError")
 class ExoAudioDecoder(val context: Context) {
-    companion object {
-        private const val CANCEL_MESSAGE_ENDED = "CANCEL_MESSAGE_ENDED"
-        private const val CANCEL_MESSAGE_ERROR = "CANCEL_MESSAGE_ERROR"
-    }
-
-    private var mWaitJob: Job? = null
+    private var mContinuation: Continuation<Unit>? = null
     var callback: Callback? = null
 
     private val exoPlayer by lazy {
@@ -33,7 +33,14 @@ class ExoAudioDecoder(val context: Context) {
                 enableFloatOutput: Boolean,
                 enableAudioTrackPlaybackParams: Boolean
             ): AudioSink? {
-                return DecoderAudioSink { callback?.onReadPcmAudio(it) }
+                return DecoderAudioSink(
+                    onPcmBuffer = {
+                        callback?.onReadPcmAudio(it)
+                    },
+                    onEndOfStream = {
+
+                    }
+                )
             }
         }
 
@@ -43,7 +50,7 @@ class ExoAudioDecoder(val context: Context) {
                 override fun onPlaybackStateChanged(playbackState: Int) {
                     when (playbackState) {
                         ExoPlayer.STATE_ENDED -> {
-                            mWaitJob?.cancel(CANCEL_MESSAGE_ENDED)
+                            mContinuation?.resume(Unit)
                         }
                     }
 
@@ -52,7 +59,7 @@ class ExoAudioDecoder(val context: Context) {
 
                 override fun onPlayerError(error: PlaybackException) {
                     super.onPlayerError(error)
-                    mWaitJob?.cancel(CANCEL_MESSAGE_ERROR, error)
+                    mContinuation?.resumeWithException(error)
                 }
             })
 
@@ -60,47 +67,53 @@ class ExoAudioDecoder(val context: Context) {
         }
     }
 
+    @Throws(ExoPlaybackException::class)
     suspend fun doDecode(bytes: ByteArray) {
-        decodeInternal(ExoPlayerHelper.createMediaSourceFromByteArray(bytes))
+        if (bytes.isNotEmpty())
+            decodeInternal(ExoPlayerHelper.createMediaSourceFromByteArray(context, bytes))
     }
 
+    @Throws(ExoPlaybackException::class)
     suspend fun doDecode(inputStream: InputStream) {
-        decodeInternal(ExoPlayerHelper.createMediaSourceFromInputStream(inputStream))
+        decodeInternal(ExoPlayerHelper.createMediaSourceFromInputStream(context, inputStream))
     }
 
     private suspend fun decodeInternal(mediaSource: MediaSource) {
         withMain {
+            if (exoPlayer.isReleased)
+                throw IllegalStateException("ExoPlayer is released")
+
             exoPlayer.setMediaSource(mediaSource)
             exoPlayer.prepare()
         }
 
-        var throwable: Throwable? = null
-        coroutineScope {
-            mWaitJob = launch {
-                try {
-                    awaitCancellation()
-                } catch (e: CancellationException) {
-                    if (e.message == CANCEL_MESSAGE_ERROR) {
-                        throwable = e.cause
+        try {
+            // throw ExoPlayerException
+            suspendCancellableCoroutine<Unit> { continuation ->
+                mContinuation = continuation
+                continuation.invokeOnCancellation {
+                    runOnUI {
                         exoPlayer.stop()
                     }
                 }
             }
-        }
-        mWaitJob?.join()
-        mWaitJob = null
-
-        throwable?.let {
-            throw AudioDecoderException(
-                message = "ExoPlayer解码失败：${it.message}",
-                cause = it
-            )
+        } finally {
+            mContinuation = null
         }
     }
 
 
     fun interface Callback {
         fun onReadPcmAudio(byteBuffer: ByteBuffer)
+    }
+
+    suspend fun destroy() {
+        withMain {
+            if (!exoPlayer.isReleased) exoPlayer.release()
+        }
+        mContinuation?.context?.apply { if (isActive) cancel() }
+        mContinuation = null
+        callback = null
     }
 
 }

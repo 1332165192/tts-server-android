@@ -54,7 +54,7 @@ internal fun Item(
     val context = LocalContext.current
     var deleteDialog by remember { mutableStateOf(false) }
     if (deleteDialog)
-        ConfigDeleteDialog(onDismissRequest = { deleteDialog = false }, name = name) {
+        ConfigDeleteDialog(onDismissRequest = { deleteDialog = false }, content = name) {
             onDelete()
         }
 

@@ -1,14 +1,16 @@
 plugins {
     alias(libs.plugins.android.library)
     alias(libs.plugins.kotlin.android)
+    alias(libs.plugins.compose.compiler)
 }
 
 android {
     namespace = "com.github.jing332.compose"
-    compileSdk = 34
+    compileSdk = libs.versions.compileSdk.get().toInt()
 
     defaultConfig {
-        minSdk = 21
+        minSdk = libs.versions.minSdk.get().toInt()
+        testOptions.targetSdk = libs.versions.targetSdk.get().toInt()
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         consumerProguardFiles("consumer-rules.pro")
@@ -24,19 +26,15 @@ android {
         }
     }
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_1_8
-        targetCompatibility = JavaVersion.VERSION_1_8
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
     kotlinOptions {
-        jvmTarget = "1.8"
+        jvmTarget = "17"
     }
 
     buildFeatures {
         compose = true
-    }
-
-    composeOptions {
-        kotlinCompilerExtensionVersion = libs.versions.composeComplile.get()
     }
 
     android {
@@ -51,15 +49,19 @@ android {
 dependencies {
     api(project(":lib-common"))
 
+    api(libs.bundles.coil)
     implementation(libs.bundles.markwon)
     implementation(libs.bundles.accompanist)
 
     val composeBom = platform(libs.compose.bom)
 //    def composeBom = platform("dev.chrisbanes.compose:compose-bom:2024.01.00-alpha01")
-    implementation(composeBom)
-    androidTestImplementation(composeBom)
+    api(composeBom)
+    androidTestApi(composeBom)
     api(libs.bundles.compose)
+    api(libs.bundles.compose.floatingx)
     api(libs.bundles.compose.material3)
+    api(libs.webkit)
+    api(libs.localbroadcast)
 
     androidTestApi("androidx.compose.ui:ui-test-junit4")
     debugApi("androidx.compose.ui:ui-test-manifest")
@@ -68,7 +70,7 @@ dependencies {
 
     implementation(libs.coreKtx)
     implementation(libs.appcompat)
-    implementation(libs.material)
+
     testImplementation(libs.junit)
     androidTestImplementation(libs.ext.junit)
     androidTestImplementation(libs.espresso.core)

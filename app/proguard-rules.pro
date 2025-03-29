@@ -1,19 +1,15 @@
 -keepattributes SourceFile,LineNumberTable
+-keepattributes Exceptions,InnerClasses,Signature
 
--keep class androidx.compose.ui.platform.AndroidCompositionLocals_androidKt { *; }
+# Logger
+-keepclassmembers class ch.qos.logback.classic.pattern.* { <init>(); }
+-keep class ch.qos.logback.** { *; }
+-keep class org.slf4j.impl.** { *; }
+-keepattributes *Annotation*
+-dontwarn ch.qos.logback.core.net.*
 
-# Rhino
--keep class javax.script.** { *; }
--keep class com.sun.script.javascript.** { *; }
--keep class org.mozilla.javascript.** { *; }
--keep class com.script.javascript.** { *; }
-
-# 插件相关
--keep class com.github.jing332.tts_server_android.model.rhino.core.** { *; }
 -keep class cn.hutool.crypto.** { *; }
 -keep class com.hankcs.hanlp.** { *; }
-
-#-keep class cn.hutool.core.** { *; }
 
 -keepnames class * extends java.lang.Exception
 
@@ -29,59 +25,19 @@
     public static ** inflate(...);
 }
 
-#-------------- 去掉所有打印 -------------
-
 -assumenosideeffects class android.util.Log {
-public static *** d(...);
-
-# public static *** e(...);
-
-public static *** i(...);
-
-public static *** v(...);
-
-public static *** println(...);
-
-public static *** w(...);
-
-public static *** wtf(...);
-
+#    public static *** e(...);
+    public static *** d(...);
+    public static *** i(...);
+    public static *** v(...);
+#    public static *** w(...);
+    public static *** wtf(...);
+    public static *** println(...);
 }
-
--assumenosideeffects class android.util.Log {
-public static *** d(...);
-
-public static *** v(...);
-
-}
-
--assumenosideeffects class android.util.Log {
-# public static *** e(...);
-
-public static *** v(...);
-
-}
-
--assumenosideeffects class android.util.Log {
-public static *** i(...);
-
-public static *** v(...);
-
-}
-
--assumenosideeffects class android.util.Log {
-public static *** w(...);
-
-public static *** v(...);
-
-}
-
--assumenosideeffects class java.io.PrintStream {
-public *** println(...);
-
-public *** print(...);
-
-}
+#-assumenosideeffects class java.io.PrintStream {
+#    public *** println(...);
+#    public *** print(...);
+#}
 
 # Keep `Companion` object fields of serializable classes.
 # This avoids serializer lookup through `getDeclaredClasses` as done for named companion objects.
@@ -314,3 +270,112 @@ public *** print(...);
 -dontwarn org.openjsse.net.ssl.OpenJSSE
 -dontwarn org.commonmark.ext.gfm.strikethrough.Strikethrough
 -dontwarn pl.droidsonroids.gif.GifDrawable
+
+-dontwarn java.beans.BeanDescriptor
+-dontwarn jdk.dynalink.CallSiteDescriptor
+-dontwarn jdk.dynalink.DynamicLinker
+-dontwarn jdk.dynalink.DynamicLinkerFactory
+-dontwarn jdk.dynalink.NamedOperation
+-dontwarn jdk.dynalink.Namespace
+-dontwarn jdk.dynalink.NamespaceOperation
+-dontwarn jdk.dynalink.Operation
+-dontwarn jdk.dynalink.RelinkableCallSite
+-dontwarn jdk.dynalink.StandardNamespace
+-dontwarn jdk.dynalink.StandardOperation
+-dontwarn jdk.dynalink.linker.GuardedInvocation
+-dontwarn jdk.dynalink.linker.GuardingDynamicLinker
+-dontwarn jdk.dynalink.linker.LinkRequest
+-dontwarn jdk.dynalink.linker.LinkerServices
+-dontwarn jdk.dynalink.linker.TypeBasedGuardingDynamicLinker
+-dontwarn jdk.dynalink.linker.support.CompositeTypeBasedGuardingDynamicLinker
+-dontwarn jdk.dynalink.linker.support.Guards
+-dontwarn jdk.dynalink.support.ChainedCallSite
+-dontwarn org.apache.log4j.Level
+-dontwarn org.apache.log4j.Logger
+-dontwarn org.apache.log4j.Priority
+-dontwarn org.apache.logging.log4j.Level
+-dontwarn org.apache.logging.log4j.LogManager
+-dontwarn org.apache.logging.log4j.Logger
+-dontwarn org.apache.logging.log4j.message.MessageFactory
+-dontwarn org.apache.logging.log4j.spi.ExtendedLogger
+-dontwarn org.apache.logging.log4j.spi.ExtendedLoggerWrapper
+-dontwarn org.eclipse.jetty.npn.NextProtoNego$ClientProvider
+-dontwarn org.eclipse.jetty.npn.NextProtoNego$Provider
+-dontwarn org.eclipse.jetty.npn.NextProtoNego$ServerProvider
+-dontwarn org.eclipse.jetty.npn.NextProtoNego
+-dontwarn reactor.blockhound.integration.BlockHoundIntegration
+
+-dontwarn com.aayushatharva.brotli4j.Brotli4jLoader
+-dontwarn com.aayushatharva.brotli4j.decoder.DecoderJNI$Status
+-dontwarn com.aayushatharva.brotli4j.decoder.DecoderJNI$Wrapper
+-dontwarn com.aayushatharva.brotli4j.encoder.BrotliEncoderChannel
+-dontwarn com.aayushatharva.brotli4j.encoder.Encoder$Mode
+-dontwarn com.aayushatharva.brotli4j.encoder.Encoder$Parameters
+-dontwarn com.github.luben.zstd.Zstd
+-dontwarn com.github.luben.zstd.ZstdInputStreamNoFinalizer
+-dontwarn com.github.luben.zstd.util.Native
+-dontwarn com.google.protobuf.ExtensionRegistry
+-dontwarn com.google.protobuf.ExtensionRegistryLite
+-dontwarn com.google.protobuf.MessageLite$Builder
+-dontwarn com.google.protobuf.MessageLite
+-dontwarn com.google.protobuf.MessageLiteOrBuilder
+-dontwarn com.google.protobuf.Parser
+-dontwarn com.google.protobuf.nano.CodedOutputByteBufferNano
+-dontwarn com.google.protobuf.nano.MessageNano
+-dontwarn com.jcraft.jzlib.Deflater
+-dontwarn com.jcraft.jzlib.Inflater
+-dontwarn com.jcraft.jzlib.JZlib$WrapperType
+-dontwarn com.jcraft.jzlib.JZlib
+-dontwarn com.ning.compress.BufferRecycler
+-dontwarn com.ning.compress.lzf.ChunkDecoder
+-dontwarn com.ning.compress.lzf.ChunkEncoder
+-dontwarn com.ning.compress.lzf.LZFChunk
+-dontwarn com.ning.compress.lzf.LZFEncoder
+-dontwarn com.ning.compress.lzf.util.ChunkDecoderFactory
+-dontwarn com.ning.compress.lzf.util.ChunkEncoderFactory
+-dontwarn com.oracle.svm.core.annotate.Alias
+-dontwarn com.oracle.svm.core.annotate.InjectAccessors
+-dontwarn com.oracle.svm.core.annotate.RecomputeFieldValue$Kind
+-dontwarn com.oracle.svm.core.annotate.RecomputeFieldValue
+-dontwarn com.oracle.svm.core.annotate.TargetClass
+-dontwarn io.netty.internal.tcnative.AsyncSSLPrivateKeyMethod
+-dontwarn io.netty.internal.tcnative.AsyncTask
+-dontwarn io.netty.internal.tcnative.Buffer
+-dontwarn io.netty.internal.tcnative.CertificateCallback
+-dontwarn io.netty.internal.tcnative.CertificateCompressionAlgo
+-dontwarn io.netty.internal.tcnative.CertificateVerifier
+-dontwarn io.netty.internal.tcnative.Library
+-dontwarn io.netty.internal.tcnative.ResultCallback
+-dontwarn io.netty.internal.tcnative.SSL
+-dontwarn io.netty.internal.tcnative.SSLContext
+-dontwarn io.netty.internal.tcnative.SSLPrivateKeyMethod
+-dontwarn io.netty.internal.tcnative.SSLSession
+-dontwarn io.netty.internal.tcnative.SSLSessionCache
+-dontwarn io.netty.internal.tcnative.SessionTicketKey
+-dontwarn io.netty.internal.tcnative.SniHostNameMatcher
+-dontwarn lzma.sdk.ICodeProgress
+-dontwarn lzma.sdk.lzma.Encoder
+-dontwarn net.jpountz.lz4.LZ4Compressor
+-dontwarn net.jpountz.lz4.LZ4Exception
+-dontwarn net.jpountz.lz4.LZ4Factory
+-dontwarn net.jpountz.lz4.LZ4FastDecompressor
+-dontwarn net.jpountz.xxhash.XXHash32
+-dontwarn net.jpountz.xxhash.XXHashFactory
+-dontwarn org.jboss.marshalling.ByteInput
+-dontwarn org.jboss.marshalling.ByteOutput
+-dontwarn org.jboss.marshalling.Marshaller
+-dontwarn org.jboss.marshalling.MarshallerFactory
+-dontwarn org.jboss.marshalling.MarshallingConfiguration
+-dontwarn org.jboss.marshalling.Unmarshaller
+-dontwarn org.osgi.annotation.bundle.Export
+-dontwarn reactor.blockhound.BlockHound$Builder
+-dontwarn sun.security.x509.AlgorithmId
+-dontwarn sun.security.x509.CertificateAlgorithmId
+-dontwarn sun.security.x509.CertificateSerialNumber
+-dontwarn sun.security.x509.CertificateSubjectName
+-dontwarn sun.security.x509.CertificateValidity
+-dontwarn sun.security.x509.CertificateVersion
+-dontwarn sun.security.x509.CertificateX509Key
+-dontwarn sun.security.x509.X500Name
+-dontwarn sun.security.x509.X509CertImpl
+-dontwarn sun.security.x509.X509CertInfo

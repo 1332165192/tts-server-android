@@ -8,40 +8,10 @@
 
 package com.github.jing332.common.audio;
 
+import java.nio.ByteBuffer;
+
+// https://github.com/waywardgeek/sonic/blob/master/Sonic.java
 public class Sonic {
-
-    public static byte[] upSampling(byte[] data, int inFrequency, int outFrequency) {
-        if (data.length < 4) {
-            return data;
-        }
-
-        int v1, v2;
-        short value;
-        double pos = 0;
-        int length = data.length;
-        double scale = (double) inFrequency / (double) outFrequency;
-        byte[] output = new byte[2 * (int) ((length / 2) / scale)];
-        for (int i = 0; i < output.length / 2; i++) {
-            int inPos = (int) pos;
-            double proportion = pos - inPos;
-
-            int inRealPos = inPos * 2;
-            if (inRealPos >= length - 3) {
-                inRealPos = length - 4;
-                proportion = 1;
-            }
-            v1 = ((data[inRealPos] & 255) | (data[inRealPos + 1] << 8));
-            v2 = ((data[inRealPos + 2] & 255) | (data[inRealPos + 3] << 8));
-
-            value = (short) (v1 * (1 - proportion) + v2 * proportion);
-
-            output[i * 2] = (byte) (value & 255);
-            output[i * 2 + 1] = (byte) ((value >> 8) & 255);
-
-            pos += scale;
-        }
-        return output;
-    }
 
     private static final int SONIC_MIN_PITCH = 65;
     private static final int SONIC_MAX_PITCH = 400;
@@ -479,6 +449,7 @@ public class Sonic {
         return numSamples;
     }
 
+
     public byte[] readBytesFromStream(int maxBytes) {
         int maxSamples = maxBytes / (2 * numChannels);
         int numSamples = numOutputSamples;
@@ -503,11 +474,14 @@ public class Sonic {
         return outBuffer;
     }
 
+
     // Read unsigned byte data out of the stream.  Sometimes no data will be available, and zero
     // is returned, which is not an error condition.
-    public int readBytesFromStream(
-            byte outBuffer[],
-            int maxBytes) {
+    public int readBytesFromStream(ByteBuffer outBuffer, int maxBytes) {
+        if (outBuffer == null || maxBytes < 0) {
+            throw new IllegalArgumentException("Invalid input parameters.");
+        }
+
         int maxSamples = maxBytes / (2 * numChannels);
         int numSamples = numOutputSamples;
         int remainingSamples = 0;
@@ -515,19 +489,28 @@ public class Sonic {
         if (numSamples == 0 || maxSamples == 0) {
             return 0;
         }
+
         if (numSamples > maxSamples) {
             remainingSamples = numSamples - maxSamples;
             numSamples = maxSamples;
         }
-        for (int xSample = 0; xSample < numSamples * numChannels; xSample++) {
-            short sample = outputBuffer[xSample];
-            outBuffer[xSample << 1] = (byte) (sample & 0xff);
-            outBuffer[(xSample << 1) + 1] = (byte) (sample >> 8);
+
+        // 获取当前 position，以便后续计算写入的字节数
+        int initialPosition = outBuffer.position();
+
+        for (int i = 0; i < numSamples * numChannels; i++) {
+            short sample = outputBuffer[i]; // 假设 outputBufferArray 是内部的 short[] 数组
+            outBuffer.put((byte) (sample & 0xff)); // 低字节
+            outBuffer.put((byte) (sample >> 8));   // 高字节
         }
+
         move(outputBuffer, 0, outputBuffer, numSamples, remainingSamples);
         numOutputSamples = remainingSamples;
-        return 2 * numSamples * numChannels;
+
+        // 计算并返回实际写入的字节数
+        return outBuffer.position() - initialPosition;
     }
+
 
     // Force the sonic stream to generate output using whatever data it currently
     // has.  No extra delay will be added to the output, but flushing in the middle of

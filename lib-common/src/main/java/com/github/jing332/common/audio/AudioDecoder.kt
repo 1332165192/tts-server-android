@@ -10,6 +10,7 @@ import android.text.TextUtils
 import android.util.Log
 import com.github.jing332.common.audio.AudioDecoderException.Companion.ERROR_CODE_NO_AUDIO_TRACK
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.isActive
 import okio.ByteString
 import okio.ByteString.Companion.toByteString
@@ -27,12 +28,13 @@ class AudioDecoder {
         suspend fun InputStream.readPcmChunk(
             bufferSize: Int = 4096,
             chunkSize: Int = 2048,
-            onRead: suspend (ByteArray) -> Unit
+            onRead: suspend (ByteArray) -> Unit,
         ) {
             var bufferFilledCount = 0
             val buffer = ByteArray(bufferSize)
 
-            while (coroutineContext.isActive) {
+            while (true) {
+                coroutineContext.ensureActive()
                 val readLen =
                     this.read(buffer, bufferFilledCount, chunkSize - bufferFilledCount)
                 if (readLen == -1) {
@@ -205,7 +207,7 @@ class AudioDecoder {
         mediaExtractor: MediaExtractor,
         sampleRate: Int,
         timeoutUs: Long = 5000L,
-        onRead: suspend (pcmData: ByteArray) -> Unit
+        onRead: suspend (pcmData: ByteArray) -> Unit,
     ) {
         val trackFormat = mediaExtractor.selectAudioTrack()
         val mime = trackFormat.mime

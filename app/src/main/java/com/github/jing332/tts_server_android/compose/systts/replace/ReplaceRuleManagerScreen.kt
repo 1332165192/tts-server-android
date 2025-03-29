@@ -1,10 +1,11 @@
 package com.github.jing332.tts_server_android.compose.systts.replace
 
 import android.content.Intent
-import android.os.Bundle
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -30,6 +31,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -39,22 +41,24 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.github.jing332.tts_server_android.R
-import com.github.jing332.tts_server_android.compose.LocalNavController
-import com.github.jing332.tts_server_android.compose.ShadowReorderableItem
-import com.github.jing332.tts_server_android.compose.navigate
-import com.github.jing332.tts_server_android.compose.systts.sizeToToggleableState
 import com.github.jing332.compose.widgets.LazyListIndexStateSaver
+import com.github.jing332.compose.widgets.ShadowedDraggableItem
 import com.github.jing332.compose.widgets.TextFieldDialog
-import com.github.jing332.tts_server_android.data.appDb
-import com.github.jing332.tts_server_android.data.entities.replace.GroupWithReplaceRule
-import com.github.jing332.tts_server_android.data.entities.replace.ReplaceRule
-import com.github.jing332.tts_server_android.data.entities.replace.ReplaceRuleGroup
+import com.github.jing332.database.dbm
+import com.github.jing332.database.entities.replace.GroupWithReplaceRule
+import com.github.jing332.database.entities.replace.ReplaceRule
+import com.github.jing332.database.entities.replace.ReplaceRuleGroup
+import com.github.jing332.tts_server_android.R
+import com.github.jing332.tts_server_android.compose.AppDefaultProperties
+import com.github.jing332.tts_server_android.compose.LocalNavController
+import com.github.jing332.tts_server_android.compose.SharedViewModel
+import com.github.jing332.tts_server_android.compose.systts.sizeToToggleableState
 import com.github.jing332.tts_server_android.service.systts.SystemTtsService
 import com.github.jing332.tts_server_android.utils.MyTools
 import okhttp3.internal.toLongOrDefault
@@ -64,14 +68,17 @@ import org.burnoutcrew.reorderable.reorderable
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
-internal fun ManagerScreen(vm: ReplaceRuleManagerViewModel = viewModel(), finish: () -> Unit) {
+internal fun ReplaceRuleManagerScreen(
+    sharedVM: SharedViewModel,
+    vm: ReplaceRuleManagerViewModel = viewModel(),
+    finish: () -> Unit,
+) {
     val context = LocalContext.current
     val navController = LocalNavController.current
 
     fun navigateToEdit(rule: ReplaceRule = ReplaceRule()) {
-        navController.navigate(NavRoutes.Edit.id, Bundle().apply {
-            putParcelable(NavRoutes.Edit.KEY_DATA, rule)
-        })
+        sharedVM.put(NavRoutes.Edit.KEY_DATA, rule)
+        navController.navigate(NavRoutes.Edit.id)
     }
 
     var showImportSheet by remember { mutableStateOf(false) }
@@ -94,7 +101,7 @@ internal fun ManagerScreen(vm: ReplaceRuleManagerViewModel = viewModel(), finish
             onTextChange = { text = it },
             onDismissRequest = { showAddGroupDialog = false },
             onConfirm = {
-                appDb.replaceRuleDao.insertGroup(ReplaceRuleGroup(name = text))
+                dbm.replaceRuleDao.insertGroup(ReplaceRuleGroup(name = text))
             }
         )
     }
@@ -108,7 +115,7 @@ internal fun ManagerScreen(vm: ReplaceRuleManagerViewModel = viewModel(), finish
             },
             group = group,
             onGroupChange = { group = it },
-            onConfirm = { appDb.replaceRuleDao.updateGroup(group) }
+            onConfirm = { dbm.replaceRuleDao.updateGroup(group) }
         )
     }
 
@@ -120,12 +127,16 @@ internal fun ManagerScreen(vm: ReplaceRuleManagerViewModel = viewModel(), finish
         )
     }
 
-
+    val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
     val models by vm.list.collectAsStateWithLifecycle()
     Scaffold(
-        modifier = Modifier.fillMaxSize(),
+        contentWindowInsets = WindowInsets(0),
+        modifier = Modifier
+            .fillMaxSize()
+            .nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
             TopAppBar(
+                scrollBehavior = scrollBehavior,
                 title = {
                     LaunchedEffect(vm.searchText, vm.searchType) {
                         vm.updateSearchResult()
@@ -133,7 +144,7 @@ internal fun ManagerScreen(vm: ReplaceRuleManagerViewModel = viewModel(), finish
                     Row(
                         modifier = Modifier
                             .clip(CircleShape)
-                            .background(MaterialTheme.colorScheme.surfaceContainer),
+                            .background(MaterialTheme.colorScheme.surfaceContainerLow),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         SearchTextField(
@@ -228,40 +239,35 @@ internal fun ManagerScreen(vm: ReplaceRuleManagerViewModel = viewModel(), finish
         }
     ) { paddingValues ->
         val listState = rememberLazyListState()
-        LazyListIndexStateSaver(
-            models = models,
-            listState = listState,
-            onIndexUpdate = { index, offset ->
-                listState.scrollToItem(index, offset)
-            }
-        )
+        LazyListIndexStateSaver(models = models, listState = listState)
 
         val reorderState =
             rememberReorderableLazyListState(listState = listState, onMove = { from, to ->
                 val fromKey = from.key.toString()
                 val toKey = to.key.toString()
                 if (fromKey.startsWith("g_") && toKey.startsWith("g_")) {
-                    val src = appDb.replaceRuleDao.getGroup(fromKey.substring(2).toLong())
+                    val src = dbm.replaceRuleDao.getGroup(fromKey.substring(2).toLong())
                         ?: return@rememberReorderableLazyListState
-                    val target = appDb.replaceRuleDao.getGroup(toKey.substring(2).toLong())
+                    val target = dbm.replaceRuleDao.getGroup(toKey.substring(2).toLong())
                         ?: return@rememberReorderableLazyListState
 
-                    appDb.replaceRuleDao.updateGroup(
+                    dbm.replaceRuleDao.updateGroup(
                         src.copy(order = target.order),
                         target.copy(order = src.order)
                     )
                 } else {
-                    val src = appDb.replaceRuleDao.get(fromKey.toLongOrDefault(Long.MIN_VALUE))
+                    val src = dbm.replaceRuleDao.get(fromKey.toLongOrDefault(Long.MIN_VALUE))
                         ?: return@rememberReorderableLazyListState
-                    val target = appDb.replaceRuleDao.get(toKey.toLongOrDefault(Long.MIN_VALUE))
+                    val target = dbm.replaceRuleDao.get(toKey.toLongOrDefault(Long.MIN_VALUE))
                         ?: return@rememberReorderableLazyListState
 
-                    appDb.replaceRuleDao.update(
+                    dbm.replaceRuleDao.update(
                         src.copy(order = target.order),
                         target.copy(order = src.order)
                     )
                 }
             })
+
         LazyColumn(
             Modifier
                 .fillMaxSize()
@@ -277,7 +283,7 @@ internal fun ManagerScreen(vm: ReplaceRuleManagerViewModel = viewModel(), finish
                     )
                 val key = "g_${g.id}"
                 stickyHeader(key = key) {
-                    ShadowReorderableItem(reorderableState = reorderState, key = key) {
+                    ShadowedDraggableItem(reorderableState = reorderState, key = key) {
                         Group(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -288,10 +294,10 @@ internal fun ManagerScreen(vm: ReplaceRuleManagerViewModel = viewModel(), finish
                             onToggleableStateChange = { enabled ->
                                 groupWithRules.list.map {
                                     if (it.isEnabled != enabled)
-                                        appDb.replaceRuleDao.update(it.copy(isEnabled = enabled))
+                                        dbm.replaceRuleDao.update(it.copy(isEnabled = enabled))
                                 }
                             },
-                            onClick = { appDb.replaceRuleDao.updateGroup(g.copy(isExpanded = !g.isExpanded)) },
+                            onClick = { dbm.replaceRuleDao.updateGroup(g.copy(isExpanded = !g.isExpanded)) },
                             onEdit = { showGroupEditDialog = g },
                             onDelete = {
                                 vm.deleteGroup(groupWithRules)
@@ -306,7 +312,10 @@ internal fun ManagerScreen(vm: ReplaceRuleManagerViewModel = viewModel(), finish
 
                 if (g.isExpanded) {
                     items(groupWithRules.list, key = { it.id }) { rule ->
-                        ShadowReorderableItem(reorderableState = reorderState, key = rule.id) { _ ->
+                        ShadowedDraggableItem(
+                            reorderableState = reorderState,
+                            key = rule.id
+                        ) { _ ->
                             Item(
                                 name = rule.name,
                                 modifier = Modifier
@@ -315,8 +324,10 @@ internal fun ManagerScreen(vm: ReplaceRuleManagerViewModel = viewModel(), finish
                                     .detectReorderAfterLongPress(reorderState),
                                 isEnabled = rule.isEnabled,
                                 onCheckedChange = { enabled ->
-                                    appDb.replaceRuleDao.update(rule.copy(isEnabled = enabled))
-                                    if (enabled) SystemTtsService.notifyUpdateConfig(isOnlyReplacer = true)
+                                    dbm.replaceRuleDao.update(rule.copy(isEnabled = enabled))
+                                    if (enabled) SystemTtsService.notifyUpdateConfig(
+                                        isOnlyReplacer = true
+                                    )
                                 },
                                 onClick = { },
                                 onEdit = { navigateToEdit(rule) },
@@ -332,6 +343,10 @@ internal fun ManagerScreen(vm: ReplaceRuleManagerViewModel = viewModel(), finish
                     }
                 }
 
+            }
+
+            item {
+                Spacer(Modifier.padding(bottom = AppDefaultProperties.LIST_END_PADDING))
             }
         }
     }

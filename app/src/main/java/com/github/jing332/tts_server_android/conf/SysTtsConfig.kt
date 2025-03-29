@@ -85,10 +85,10 @@ object SysTtsConfig {
             SystemTtsConfig.isSplitEnabled.value = value
         }
 
-    var requestTimeout: Int
-        get() = SystemTtsConfig.requestTimeout.value
+    var requestTimeout: Long
+        get() = SystemTtsConfig.requestTimeout.value.toLong()
         set(value) {
-            SystemTtsConfig.requestTimeout.value = value
+            SystemTtsConfig.requestTimeout.value = value.toInt()
         }
 
     var maxRetryCount: Int
@@ -109,21 +109,15 @@ object SysTtsConfig {
             SystemTtsConfig.maxEmptyAudioRetryCount.value = value
         }
 
-    var isSkipSilentText: Boolean
-        get() = SystemTtsConfig.isSkipSilentText.value
+    var isSkipSilentAudio: Boolean
+        get() = SystemTtsConfig.isSilenceSkipAudio.value
         set(value) {
-            SystemTtsConfig.isSkipSilentText.value = value
+            SystemTtsConfig.isSilenceSkipAudio.value = value
         }
 
     var isStreamPlayModeEnabled: Boolean
         get() = SystemTtsConfig.isStreamPlayModeEnabled.value
         set(value) {
             SystemTtsConfig.isStreamPlayModeEnabled.value = value
-        }
-
-    var isExoDecoderEnabled: Boolean
-        get() = SystemTtsConfig.isExoDecoderEnabled.value
-        set(value) {
-            SystemTtsConfig.isExoDecoderEnabled.value = value
         }
 }

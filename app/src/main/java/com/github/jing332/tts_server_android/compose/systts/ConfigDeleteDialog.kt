@@ -13,13 +13,18 @@ import androidx.compose.ui.text.font.FontWeight
 import com.github.jing332.tts_server_android.R
 
 @Composable
-fun ConfigDeleteDialog(onDismissRequest: () -> Unit, name: String, onConfirm: () -> Unit) {
+fun ConfigDeleteDialog(
+    onDismissRequest: () -> Unit,
+    title: String = stringResource(id = R.string.is_confirm_delete),
+    content: String,
+    onConfirm: () -> Unit,
+) {
     AlertDialog(
         onDismissRequest = onDismissRequest,
-        title = { Text(stringResource(id = R.string.is_confirm_delete)) },
+        title = { Text(title) },
         text = {
             Text(
-                name,
+                content,
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold
             )

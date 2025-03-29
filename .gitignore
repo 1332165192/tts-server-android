@@ -10,3 +10,6 @@ local.properties
 
 *.jks
 
+.kotlin
+.gitignore
+lib-rhino-android

@@ -1,19 +1,20 @@
 package com.github.jing332.tts_server_android.service.systts.help
 
-import com.github.jing332.tts_server_android.data.appDb
-import com.github.jing332.tts_server_android.data.entities.replace.ReplaceRule
-import com.github.jing332.tts_server_android.service.systts.help.exception.TextReplacerException
+import com.github.jing332.database.dbm
+import com.github.jing332.database.entities.replace.ReplaceRule
+import io.github.oshai.kotlinlogging.KotlinLogging
 
 class TextReplacer {
     companion object {
         const val TAG = "ReplaceHelper"
+        val logger = KotlinLogging.logger { this::class.java.name }
     }
 
     private var map: MutableMap<Int, MutableList<ReplaceRule>> = mutableMapOf()
 
     fun load() {
         map.clear()
-        appDb.replaceRuleDao.allGroupWithReplaceRules().forEach { groupWithRules ->
+        dbm.replaceRuleDao.allGroupWithReplaceRules().forEach { groupWithRules ->
             if (map[groupWithRules.group.onExecution] == null)
                 map[groupWithRules.group.onExecution] = mutableListOf()
 
@@ -29,7 +30,6 @@ class TextReplacer {
     fun replace(
         text: String,
         onExecution: Int,
-        onReplaceError: (t: TextReplacerException) -> Unit
     ): String {
         var s = text
         map[onExecution]?.forEach { rule ->
@@ -39,7 +39,7 @@ class TextReplacer {
                 else
                     s.replace(rule.pattern, rule.replacement)
             }.onFailure {
-                onReplaceError.invoke(TextReplacerException(rule, it))
+                logger.error { "Text replace failed: text=${text}, rule=$rule" }
             }
         }
 

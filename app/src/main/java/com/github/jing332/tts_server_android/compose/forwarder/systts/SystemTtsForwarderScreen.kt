@@ -3,6 +3,7 @@ package com.github.jing332.tts_server_android.compose.forwarder.systts
 import android.content.Intent
 import android.content.IntentFilter
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -24,6 +25,7 @@ import com.github.jing332.tts_server_android.service.forwarder.system.SysTtsForw
 import com.github.jing332.tts_server_android.ui.forwarder.SystemForwarderSwitchActivity
 import com.github.jing332.tts_server_android.utils.MyTools
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SystemTtsForwarderScreen(cfgVM: ConfigViewModel = viewModel()) {
     val context = LocalContext.current
@@ -54,11 +56,11 @@ fun SystemTtsForwarderScreen(cfgVM: ConfigViewModel = viewModel()) {
                 intentFilter = IntentFilter().apply {
                     addAction(SysTtsForwarderService.ACTION_ON_LOG)
                     addAction(SysTtsForwarderService.ACTION_ON_CLOSED)
-                    addAction(SysTtsForwarderService.ACTION_ON_STARTING)
+                    addAction(SysTtsForwarderService.ACTION_ON_STARTED)
                 },
                 actionOnLog = SysTtsForwarderService.ACTION_ON_LOG,
                 actionOnClosed = SysTtsForwarderService.ACTION_ON_CLOSED,
-                actionOnStarting = SysTtsForwarderService.ACTION_ON_STARTING,
+                actionOnStarted = SysTtsForwarderService.ACTION_ON_STARTED,
                 isRunning = isRunning,
                 onRunningChange = { isRunning = it },
                 switch = { context.switchSysTtsForwarder() },

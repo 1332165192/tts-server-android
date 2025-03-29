@@ -1,31 +1,47 @@
 package com.github.jing332.compose.widgets
 
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.wrapContentHeight
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Remove
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.ProgressBarRangeInfo
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.disabled
+import androidx.compose.ui.semantics.focused
 import androidx.compose.ui.semantics.invisibleToUser
+import androidx.compose.ui.semantics.progressBarRangeInfo
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.setProgress
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
-import androidx.constraintlayout.compose.ConstraintLayout
 import com.github.jing332.common.utils.performLongPress
 import com.github.jing332.compose.R
 
@@ -79,6 +95,7 @@ fun LabelSlider(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun LabelSlider(
     modifier: Modifier = Modifier,
@@ -109,77 +126,97 @@ fun LabelSlider(
     a11yDescription: String = "",
     text: @Composable BoxScope.() -> Unit,
 ) {
+
+    val updatedValue = rememberUpdatedState(value)
     val view = LocalView.current
-    ConstraintLayout(modifier) {
-        val (textRef, sliderRef) = createRefs()
-        Box(
-            modifier = Modifier
-                .constrainAs(textRef) {
-                    start.linkTo(parent.start)
-                    top.linkTo(parent.top)
-                    end.linkTo(parent.end)
-                }
-                .wrapContentHeight()
-        ) {
-            text()
+    var first by remember { mutableStateOf(true) }
+    LaunchedEffect(value) {
+        if (first) {
+            first = false
+            return@LaunchedEffect
         }
-        Row(Modifier.constrainAs(sliderRef) {
-            start.linkTo(parent.start)
-            end.linkTo(parent.end)
-            top.linkTo(textRef.bottom, margin = (-12).dp)
-        }) {
+
+        view.announceForAccessibility(a11yDescription)
+    }
+    Box(modifier) {
+        Row(Modifier, verticalAlignment = Alignment.Bottom) {
             if (showButton)
                 LongClickIconButton(
-                    onClick = {
-                        onValueRemove(false)
-                    },
-                    onLongClick = {
-                        onValueRemove(true)
-                    },
-                    enabled = value > valueRange.start,
                     modifier = Modifier
                         .semantics {
                             contentDescription = a11yDescription
-                        }
+                        },
+                    enabled = value > valueRange.start,
+                    onClick = { onValueRemove(false) },
+                    onLongClick = { onValueRemove(true) }
                 ) {
                     Icon(Icons.Default.Remove, stringResource(id = R.string.desc_seekbar_remove))
                 }
-            Slider(
-                modifier = Modifier
+
+            Column(
+                Modifier
                     .weight(1f)
-                    .semantics {
+                    .clearAndSetSemantics {
+                        focused = true
+                        if (!enabled) disabled()
+
                         stateDescription = a11yDescription
                         contentDescription = a11yDescription
-                    },
-                value = value,
-                onValueChange = {
-                    onValueChange(it)
 
-                    if (it == valueRange.start || it == valueRange.endInclusive)
-                        view.performLongPress()
-                },
-                enabled = enabled,
-                valueRange = valueRange,
-                steps = steps,
-                onValueChangeFinished = onValueChangeFinished
-            )
-            if (showButton)
+                        println("value: $value, valueRange: $valueRange, steps: $steps")
+                        progressBarRangeInfo = ProgressBarRangeInfo(value, valueRange, steps)
+                        setProgress {
+                            println("setProgress $it")
+                            onValueChange(it)
+                            true
+                        }
+
+                    },
+
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Box(Modifier.offset(y = (8).dp)) {
+                    text()
+                }
+                Slider(
+                    modifier = Modifier
+                        .padding(horizontal = 8.dp)
+                        .semantics { invisibleToUser() },
+                    value = value,
+                    onValueChange = {
+                        onValueChange(it)
+
+                        if (it == valueRange.start || it == valueRange.endInclusive)
+                            view.performLongPress()
+                    },
+                    enabled = enabled,
+                    valueRange = valueRange,
+                    steps = steps,
+                    onValueChangeFinished = onValueChangeFinished,
+                    thumb = {
+                        SliderDefaults.Thumb(
+                            interactionSource = remember { MutableInteractionSource() },
+                            colors = SliderDefaults.colors(),
+                            enabled = enabled,
+                            thumbSize = DpSize(4.dp, 24.dp)
+                        )
+                    }
+                )
+            }
+
+            if (showButton) {
                 LongClickIconButton(
-                    onClick = {
-                        onValueAdd(false)
-                    },
-                    onLongClick = {
-                        onValueAdd(true)
-                    },
-                    enabled = value < valueRange.endInclusive,
                     modifier = Modifier
                         .semantics {
                             contentDescription = a11yDescription
-                        }
+                        },
+                    enabled = value < valueRange.endInclusive,
+                    onClick = { onValueAdd(false) },
+                    onLongClick = { onValueAdd(true) }
                 ) {
                     Icon(Icons.Default.Add, stringResource(id = R.string.desc_seekbar_add))
                 }
-
+            }
         }
     }
 }
@@ -194,7 +231,7 @@ fun PreviewSlider() {
         onValueChange = { value = it },
         valueRange = 0.1f..3.0f,
         a11yDescription = str,
-        buttonSteps = 0.1f
+        buttonSteps = 0.1f,
     ) {
         Text(str)
     }

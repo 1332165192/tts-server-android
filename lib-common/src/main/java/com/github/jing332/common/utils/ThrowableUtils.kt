@@ -1,17 +1,16 @@
 package com.github.jing332.common.utils
 
-import cn.hutool.core.exceptions.ExceptionUtil.getThrowableList
+import cn.hutool.core.exceptions.ExceptionUtil
 
 
 object ThrowableUtils {
-    fun getRootCause(throwable: Throwable?): Throwable? {
-        val list = getThrowableList(throwable)
-        return if (list.size < 2) null else list[list.size - 1] as Throwable
-    }
 }
 
-val Throwable.rootCause: Throwable?
-    get() = ThrowableUtils.getRootCause(this)
+val Throwable.rootCause: Throwable
+    get() = ExceptionUtil.getRootCause(this)
+
+val Throwable.messageChain: String
+    get() = ExceptionUtil.getThrowableList(this).joinToString("\n")
 
 val Throwable.readableString: String
     get() = "${rootCause}\n⬇ More:\n${stackTraceToString()}"

@@ -4,11 +4,12 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -24,14 +25,13 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import com.github.jing332.common.utils.ClipboardUtils
+import com.github.jing332.common.utils.toast
 import com.github.jing332.tts_server_android.R
 import com.github.jing332.tts_server_android.compose.systts.directlink.LinkUploadSelectionDialog
-import com.github.jing332.compose.widgets.AppBottomSheet
 import com.github.jing332.tts_server_android.ui.AppActivityResultContracts
 import com.github.jing332.tts_server_android.ui.FilePickerActivity
 import com.github.jing332.tts_server_android.ui.view.BigTextView
-import com.github.jing332.common.utils.ClipboardUtils
-import com.github.jing332.common.utils.toast
 
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -56,10 +56,10 @@ fun ConfigExportBottomSheet(
             json = json
         )
 
-    AppBottomSheet(onDismissRequest = onDismissRequest) {
+    ModalBottomSheet(onDismissRequest = onDismissRequest) {
         Column(
             Modifier
-                .fillMaxWidth()
+                .fillMaxHeight()
                 .padding(horizontal = 8.dp)
         ) {
             content()

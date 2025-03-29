@@ -9,8 +9,8 @@ import com.github.jing332.tts_server_android.compose.systts.ConfigImportBottomSh
 import com.github.jing332.tts_server_android.compose.systts.ConfigModel
 import com.github.jing332.tts_server_android.compose.systts.SelectImportConfigDialog
 import com.github.jing332.tts_server_android.constant.AppConst
-import com.github.jing332.tts_server_android.data.appDb
-import com.github.jing332.tts_server_android.data.entities.SpeechRule
+import com.github.jing332.database.dbm
+import com.github.jing332.database.entities.SpeechRule
 
 @Composable
 fun SpeechRuleImportBottomSheet(onDismissRequest: () -> Unit) {
@@ -21,7 +21,7 @@ fun SpeechRuleImportBottomSheet(onDismissRequest: () -> Unit) {
             onDismissRequest = { showSelectDialog = null },
             models = list.map { ConfigModel(true, it.name, "${it.author} - v${it.version}", it) },
             onSelectedList = {
-                 appDb.speechRuleDao.insert(*it.map { speechRule -> speechRule as SpeechRule }.toTypedArray())
+                 dbm.speechRuleDao.insert(*it.map { speechRule -> speechRule as SpeechRule }.toTypedArray())
 
                 it.size
             }

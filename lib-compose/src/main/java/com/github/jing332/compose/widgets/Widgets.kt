@@ -17,17 +17,17 @@ import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import com.google.accompanist.systemuicontroller.rememberSystemUiController
 
 
-@Composable
-fun SetupSystemBars() {
-    val systemUiController = rememberSystemUiController()
-    val useDarkIcons = !isSystemInDarkTheme()
-    SideEffect {
-        systemUiController.setSystemBarsColor(
-            color = Color.Transparent,
-            darkIcons = useDarkIcons,
-        )
-    }
-}
+//@Composable
+//fun SetupSystemBars() {
+//    val systemUiController = rememberSystemUiController()
+//    val useDarkIcons = !isSystemInDarkTheme()
+//    SideEffect {
+//        systemUiController.setSystemBarsColor(
+//            color = Color.Transparent,
+//            darkIcons = useDarkIcons,
+//        )
+//    }
+//}
 
 @Composable
 fun BasicBroadcastReceiver(

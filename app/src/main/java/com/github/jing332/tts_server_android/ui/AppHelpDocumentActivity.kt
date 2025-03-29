@@ -8,7 +8,7 @@ import android.view.View
 import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.activity.compose.setContent
-import androidx.appcompat.app.AppCompatActivity
+import androidx.appcompat.app.AlertDialog
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -23,13 +23,13 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.view.setPadding
 import androidx.core.widget.NestedScrollView
-import com.github.jing332.tts_server_android.R
-import com.github.jing332.tts_server_android.compose.theme.AppTheme
 import com.github.jing332.common.utils.ClipboardUtils
 import com.github.jing332.common.utils.FileUtils.readAllText
 import com.github.jing332.common.utils.dp
 import com.github.jing332.common.utils.toast
-import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import com.github.jing332.tts_server_android.R
+import com.github.jing332.tts_server_android.compose.ComposeActivity
+import com.github.jing332.tts_server_android.compose.theme.AppTheme
 import io.noties.markwon.AbstractMarkwonPlugin
 import io.noties.markwon.LinkResolverDef
 import io.noties.markwon.Markwon
@@ -43,7 +43,7 @@ import io.noties.markwon.image.svg.SvgMediaDecoder
 import io.noties.markwon.linkify.LinkifyPlugin
 
 @OptIn(ExperimentalMaterial3Api::class)
-class AppHelpDocumentActivity : AppCompatActivity() {
+class AppHelpDocumentActivity : ComposeActivity() {
     companion object {
         const val TAG = "AppHelpDocumentActivity"
     }
@@ -71,7 +71,7 @@ class AppHelpDocumentActivity : AppCompatActivity() {
                     builder.linkResolver(object : LinkResolverDef() {
                         override fun resolve(view: View, link: String) {
                             Log.d(TAG, "resolve: $link")
-                            MaterialAlertDialogBuilder(this@AppHelpDocumentActivity)
+                            AlertDialog.Builder(this@AppHelpDocumentActivity)
                                 .setTitle("是否跳转？")
                                 .setMessage("是否跳转到 $link ?")
                                 .setPositiveButton(android.R.string.ok) { _, _ ->

@@ -5,7 +5,6 @@ import android.graphics.drawable.shapes.OvalShape
 import android.os.Bundle
 import androidx.activity.compose.setContent
 import androidx.annotation.OptIn
-import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -32,13 +31,14 @@ import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
+import com.github.jing332.common.utils.ASFUriUtils.getPath
 import com.github.jing332.tts_server_android.R
+import com.github.jing332.tts_server_android.compose.ComposeActivity
 import com.github.jing332.tts_server_android.compose.theme.AppTheme
 import com.github.jing332.tts_server_android.ui.view.AppDialogs.displayErrorDialog
-import com.github.jing332.common.utils.ASFUriUtils.getPath
 
 @kotlin.OptIn(ExperimentalMaterial3Api::class)
-class ExoPlayerActivity : AppCompatActivity(), Player.Listener {
+class ExoPlayerActivity : ComposeActivity(), Player.Listener {
     private val exoPlayer by lazy {
         ExoPlayer.Builder(this).build().apply {
             addListener(this@ExoPlayerActivity)

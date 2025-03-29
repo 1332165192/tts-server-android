@@ -4,20 +4,16 @@ import android.content.Context
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.github.jing332.database.dbm
+import com.github.jing332.database.entities.AbstractListGroup.Companion.DEFAULT_GROUP_ID
+import com.github.jing332.database.entities.systts.GroupWithSystemTts
+import com.github.jing332.database.entities.systts.SystemTtsV2
+import com.github.jing332.database.entities.systts.TtsConfigurationDTO
 import com.github.jing332.tts_server_android.R
 import com.github.jing332.tts_server_android.conf.SystemTtsConfig
-import com.github.jing332.tts_server_android.constant.AppConst
-import com.github.jing332.tts_server_android.constant.SpeechTarget
-import com.github.jing332.tts_server_android.data.appDb
-import com.github.jing332.tts_server_android.data.entities.AbstractListGroup.Companion.DEFAULT_GROUP_ID
-import com.github.jing332.tts_server_android.data.entities.systts.GroupWithSystemTts
-import com.github.jing332.tts_server_android.data.entities.systts.SystemTts
-import com.github.jing332.tts_server_android.data.entities.systts.SystemTtsGroup
-import com.github.jing332.common.utils.FileUtils.readAllText
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.conflate
 import kotlinx.coroutines.launch
 import org.burnoutcrew.reorderable.ItemPosition
@@ -28,51 +24,61 @@ class ListManagerViewModel : ViewModel() {
         const val TAG = "ListManagerViewModel"
     }
 
-    private val _list = MutableStateFlow<List<GroupWithSystemTts>>(emptyList())
+    private val _list =
+        MutableStateFlow<List<GroupWithSystemTts>>(
+            emptyList()
+        )
     val list: StateFlow<List<GroupWithSystemTts>> get() = _list
 
     init {
         viewModelScope.launch(Dispatchers.IO) {
-            appDb.systemTtsDao.updateAllOrder()
-            appDb.systemTtsDao.getFlowAllGroupWithTts().conflate().collectLatest {
-                _list.value = it
+            dbm.systemTtsV2.updateAllOrder()
+            dbm.systemTtsV2.flowAllGroupWithTts().conflate().collect {
+                Log.d(TAG, "update list: ${it.size}")
+                _list.tryEmit(it)
             }
         }
     }
 
-    fun updateTtsEnabled(item: SystemTts, enabled: Boolean) {
-        if (!SystemTtsConfig.isVoiceMultipleEnabled.value && enabled)
-            appDb.systemTtsDao.allEnabledTts.forEach { systts ->
-                if (systts.speechRule.target == SpeechTarget.BGM || systts.speechRule.isStandby)
-                    return@forEach
-
-                if (systts.speechRule.target == item.speechRule.target) {
-                    if (systts.speechRule.tagRuleId == item.speechRule.tagRuleId
-                        && systts.speechRule.tag == item.speechRule.tag
-                        && systts.speechRule.tagName == item.speechRule.tagName
-                        && systts.speechRule.isStandby == item.speechRule.isStandby
-                    )
-                        appDb.systemTtsDao.updateTts(systts.copy(isEnabled = false))
+    fun updateTtsEnabled(
+        item: SystemTtsV2,
+        enabled: Boolean,
+    ) {
+        if (!SystemTtsConfig.isVoiceMultipleEnabled.value && enabled) {
+            val itemConfig = (item.config as? TtsConfigurationDTO)
+            if (itemConfig != null)
+                dbm.systemTtsV2.allEnabled.forEach { systts ->
+                    if (systts.config is TtsConfigurationDTO) {
+                        val config = systts.config as TtsConfigurationDTO
+                        if (config.speechRule.target == itemConfig.speechRule.target) {
+                            if (config.speechRule.tagRuleId == itemConfig.speechRule.tagRuleId
+                                && config.speechRule.tag == itemConfig.speechRule.tag
+                                && config.speechRule.tagName == itemConfig.speechRule.tagName
+                                && config.speechRule.isStandby == itemConfig.speechRule.isStandby
+                            )
+                                dbm.systemTtsV2.update(systts.copy(isEnabled = false))
+                        }
+                    }
                 }
-            }
+        }
 
-        appDb.systemTtsDao.updateTts(item.copy(isEnabled = enabled))
+        dbm.systemTtsV2.update(item.copy(isEnabled = enabled))
     }
 
     fun updateGroupEnable(
         item: GroupWithSystemTts,
-        enabled: Boolean
+        enabled: Boolean,
     ) {
         if (!SystemTtsConfig.isGroupMultipleEnabled.value && enabled) {
             list.value.forEach {
                 it.list.forEach { systts ->
                     if (systts.isEnabled)
-                        appDb.systemTtsDao.updateTts(systts.copy(isEnabled = false))
+                        dbm.systemTtsV2.update(systts.copy(isEnabled = false))
                 }
             }
         }
 
-        appDb.systemTtsDao.updateTts(
+        dbm.systemTtsV2.update(
             *item.list.filter { it.isEnabled != enabled }.map { it.copy(isEnabled = enabled) }
                 .toTypedArray()
         )
@@ -99,7 +105,7 @@ class ListManagerViewModel : ViewModel() {
                 }
                 mList.forEachIndexed { index, systemTtsGroup ->
                     if (systemTtsGroup.order != index)
-                        appDb.systemTtsDao.updateGroup(systemTtsGroup.copy(order = index))
+                        dbm.systemTtsV2.updateGroup(systemTtsGroup.copy(order = index))
                 }
             } else if (!fromKey.startsWith("g") && !toKey.startsWith("g")) {
                 val (fromGId, fromId) = fromKey.split("_").map { it.toLong() }
@@ -120,39 +126,42 @@ class ListManagerViewModel : ViewModel() {
                 listInGroup.forEachIndexed { index, systts ->
                     Log.d(TAG, "$index ${systts.displayName}")
                     if (systts.order != index)
-                        appDb.systemTtsDao.updateTts(systts.copy(order = index))
+                        dbm.systemTtsV2.update(systts.copy(order = index))
                 }
             }
 
         }
     }
 
-    private fun findListInGroup(groupId: Long): List<SystemTts> {
+    private fun findListInGroup(groupId: Long): List<SystemTtsV2> {
         return list.value.find { it.group.id == groupId }?.list?.sortedBy { it.order }
             ?: emptyList()
     }
 
     fun checkListData(context: Context) {
-        appDb.systemTtsDao.getGroup(DEFAULT_GROUP_ID) ?: kotlin.run {
-            appDb.systemTtsDao.insertGroup(
-                SystemTtsGroup(
+        dbm.systemTtsV2.getGroup(DEFAULT_GROUP_ID) ?: kotlin.run {
+            dbm.systemTtsV2.insertGroup(
+                com.github.jing332.database.entities.systts.SystemTtsGroup(
                     DEFAULT_GROUP_ID,
                     context.getString(R.string.default_group),
-                    appDb.systemTtsDao.groupCount
+                    dbm.systemTtsV2.groupCount
                 )
             )
         }
 
-        if (appDb.systemTtsDao.ttsCount == 0)
+        if (dbm.systemTtsV2.count == 0)
             importDefaultListData(context)
     }
 
     private fun importDefaultListData(context: Context) {
-        val json = context.assets.open("defaultData/list.json").readAllText()
-        val list = AppConst.jsonBuilder.decodeFromString<List<GroupWithSystemTts>>(json)
-        viewModelScope.launch(Dispatchers.IO) {
-            appDb.systemTtsDao.insertGroupWithTts(*list.toTypedArray())
-        }
+//        val json = context.assets.open("defaultData/list.json").readAllText()
+//        val list =
+//            AppConst.jsonBuilder.decodeFromString<List<GroupWithSystemTts>>(
+//                json
+//            )
+//        viewModelScope.launch(Dispatchers.IO) {
+//            dbm.systemTtsV2.insertGroupWithTts(*list.toTypedArray())
+//        }
     }
 
 }

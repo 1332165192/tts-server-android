@@ -13,7 +13,10 @@ import java.nio.ByteBuffer
 /**
  * 用于接收从 ExoPlayer 解码后的 PCM 数据，而不是播放到 AudioTrack。
  */
-class DecoderAudioSink(private val onPcmBuffer: (ByteBuffer) -> Unit) : AudioSink {
+class DecoderAudioSink(
+    private val onPcmBuffer: (ByteBuffer) -> Unit,
+    private val onEndOfStream: () -> Unit
+) : AudioSink {
     private var timeUs: Long = 0L
 
     companion object {
@@ -52,12 +55,11 @@ class DecoderAudioSink(private val onPcmBuffer: (ByteBuffer) -> Unit) : AudioSin
     ): Boolean {
         onPcmBuffer.invoke(buffer)
         timeUs += presentationTimeUs
+
         return true
     }
 
-    override fun playToEndOfStream() {
-
-    }
+    override fun playToEndOfStream() = onEndOfStream()
 
     override fun isEnded(): Boolean = true
 

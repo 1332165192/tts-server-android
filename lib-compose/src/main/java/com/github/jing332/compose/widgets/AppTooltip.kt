@@ -19,7 +19,7 @@ fun AppTooltip(
     val state = rememberTooltipState()
     TooltipBox(
         modifier = modifier,
-        positionProvider = TooltipDefaults.rememberPlainTooltipPositionProvider(),
+        positionProvider = TooltipDefaults.rememberTooltipPositionProvider(),
         tooltip = {
             PlainTooltip {
                 Text(tooltip)

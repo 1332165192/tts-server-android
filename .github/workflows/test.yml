@@ -10,29 +10,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  go-lib:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-go@v5
-        with:
-          go-version: 1.23
-          cache-dependency-path: ${{ github.workspace }}/tts-server-lib
-
-      - name: Build tts-server-lib
-        run: |
-          cd $GITHUB_WORKSPACE/.github/scripts
-          chmod +x *.sh
-          ./build_gojni.sh
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: tts-server-lib
-          path: lib-gojni-aar/*.aar
-
   build:
-    needs: go-lib
     strategy:
       matrix:
         product: [ { name: "App原版", value: app, lzyId: "9493563" }, { name: "Dev共存版", value: dev, lzyId: "7381570" } ]
@@ -52,11 +30,6 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-
-      - uses: actions/download-artifact@v4
-        with:
-          name: tts-server-lib
-          path: ${{ github.workspace }}/lib-gojni-aar
 
       - uses: actions/setup-java@v4
         with:

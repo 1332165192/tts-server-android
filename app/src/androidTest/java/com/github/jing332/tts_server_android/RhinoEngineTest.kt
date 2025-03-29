@@ -1,28 +1,15 @@
 package com.github.jing332.tts_server_android
 
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import cn.hutool.crypto.symmetric.SymmetricCrypto
-import com.script.javascript.RhinoScriptEngine
+import androidx.test.platform.app.InstrumentationRegistry
+import com.github.jing332.database.entities.plugin.Plugin
+import com.github.jing332.script.withRhinoContext
+import com.github.jing332.tts.speech.plugin.engine.PackageImporter
+import com.github.jing332.tts.speech.plugin.engine.TtsPluginUiEngineV2
 import org.junit.Test
 import org.junit.runner.RunWith
-import org.mozilla.javascript.NativeObject
 
 @RunWith(AndroidJUnit4::class)
 class RhinoEngineTest {
-    @Test
-    fun script() {
-        val jsCode = """
-           
-        """.trimIndent()
 
-        RhinoScriptEngine().apply {
-            val compiledScript = compile(jsCode)
-            compiledScript.eval()
-            println((get("tts") as NativeObject).get("name"))
-        }
-
-//        PluginEngine().apply {
-//            println(runScript(jsCode, "测试文本", 1))
-//        }
-    }
 }

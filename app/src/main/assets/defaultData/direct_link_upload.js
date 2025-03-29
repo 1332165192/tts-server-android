@@ -11,7 +11,7 @@ let DirectUploadJS = {
     },
 
     "喵公子 (有效期2天)": function(config) {
-        let url = 'https://sy.mgz6.cc/shuyuan'
+        let url = 'https://sy.mgz6.com/shuyuan'
         let resp = upload(url, config)
         let result = JSON.parse(resp.body().string())
         if (result['msg'] !== 'success') {

@@ -3,7 +3,7 @@ package com.github.jing332.tts_server_android.model.updater
 import android.os.Build
 import android.util.Log
 import com.github.jing332.tts_server_android.BuildConfig
-import com.github.jing332.tts_server_android.utils.toNumberInt
+import com.github.jing332.common.utils.toNumberInt
 import java.time.LocalDateTime
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter

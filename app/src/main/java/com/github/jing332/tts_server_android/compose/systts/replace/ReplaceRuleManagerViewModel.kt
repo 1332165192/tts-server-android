@@ -7,11 +7,11 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.github.jing332.tts_server_android.R
 import com.github.jing332.tts_server_android.app
-import com.github.jing332.tts_server_android.data.appDb
-import com.github.jing332.tts_server_android.data.entities.AbstractListGroup.Companion.DEFAULT_GROUP_ID
-import com.github.jing332.tts_server_android.data.entities.replace.GroupWithReplaceRule
-import com.github.jing332.tts_server_android.data.entities.replace.ReplaceRule
-import com.github.jing332.tts_server_android.data.entities.replace.ReplaceRuleGroup
+import com.github.jing332.database.dbm
+import com.github.jing332.database.entities.AbstractListGroup.Companion.DEFAULT_GROUP_ID
+import com.github.jing332.database.entities.replace.GroupWithReplaceRule
+import com.github.jing332.database.entities.replace.ReplaceRule
+import com.github.jing332.database.entities.replace.ReplaceRuleGroup
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.collectLatest
@@ -30,8 +30,8 @@ internal class ReplaceRuleManagerViewModel : ViewModel() {
 
     init {
         viewModelScope.launch(Dispatchers.IO) {
-            appDb.replaceRuleDao.getGroup(DEFAULT_GROUP_ID) ?: run {
-                appDb.replaceRuleDao.insertGroup(
+            dbm.replaceRuleDao.getGroup(DEFAULT_GROUP_ID) ?: run {
+                dbm.replaceRuleDao.insertGroup(
                     ReplaceRuleGroup(
                         DEFAULT_GROUP_ID,
                         app.getString(R.string.default_group)
@@ -39,8 +39,8 @@ internal class ReplaceRuleManagerViewModel : ViewModel() {
                 )
             }
 
-            appDb.replaceRuleDao.updateAllOrder()
-            appDb.replaceRuleDao.flowAllGroupWithReplaceRules().collectLatest {
+            dbm.replaceRuleDao.updateAllOrder()
+            dbm.replaceRuleDao.flowAllGroupWithReplaceRules().collectLatest {
                 allList = it
                 updateSearchResult()
             }
@@ -92,19 +92,19 @@ internal class ReplaceRuleManagerViewModel : ViewModel() {
     }
 
     fun moveTop(rule: ReplaceRule) {
-        appDb.replaceRuleDao.update(rule.copy(order = 0))
+        dbm.replaceRuleDao.update(rule.copy(order = 0))
     }
 
     fun moveBottom(rule: ReplaceRule) {
-        appDb.replaceRuleDao.update(rule.copy(order = appDb.replaceRuleDao.count))
+        dbm.replaceRuleDao.update(rule.copy(order = dbm.replaceRuleDao.count))
     }
 
     fun deleteRule(rule: ReplaceRule) {
-        appDb.replaceRuleDao.delete(rule)
+        dbm.replaceRuleDao.delete(rule)
     }
 
     fun deleteGroup(groupWithRules: GroupWithReplaceRule) {
-        appDb.replaceRuleDao.delete(*groupWithRules.list.toTypedArray())
-        appDb.replaceRuleDao.deleteGroup(groupWithRules.group)
+        dbm.replaceRuleDao.delete(*groupWithRules.list.toTypedArray())
+        dbm.replaceRuleDao.deleteGroup(groupWithRules.group)
     }
 }

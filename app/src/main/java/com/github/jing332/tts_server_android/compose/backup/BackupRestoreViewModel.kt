@@ -4,11 +4,11 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import com.drake.net.utils.withIO
 import com.github.jing332.tts_server_android.constant.AppConst
-import com.github.jing332.tts_server_android.data.appDb
-import com.github.jing332.tts_server_android.data.entities.SpeechRule
-import com.github.jing332.tts_server_android.data.entities.plugin.Plugin
-import com.github.jing332.tts_server_android.data.entities.replace.GroupWithReplaceRule
-import com.github.jing332.tts_server_android.data.entities.systts.GroupWithSystemTts
+import com.github.jing332.database.dbm
+import com.github.jing332.database.entities.SpeechRule
+import com.github.jing332.database.entities.plugin.Plugin
+import com.github.jing332.database.entities.replace.GroupWithReplaceRule
+import com.github.jing332.database.entities.systts.GroupWithSystemTts
 import com.github.jing332.common.utils.FileUtils
 import com.github.jing332.common.utils.ZipUtils
 import kotlinx.serialization.encodeToString
@@ -64,17 +64,17 @@ class BackupRestoreViewModel(application: Application) : AndroidViewModel(applic
         val jsonStr = file.readText()
         if (file.name.endsWith("list.json")) {
             val list: List<GroupWithSystemTts> = AppConst.jsonBuilder.decodeFromString(jsonStr)
-            appDb.systemTtsDao.insertGroupWithTts(*list.toTypedArray())
+            dbm.systemTtsV2.insertGroupWithTts(*list.toTypedArray())
         } else if (file.name.endsWith("speechRules.json")) {
             val list: List<SpeechRule> = AppConst.jsonBuilder.decodeFromString(jsonStr)
-            appDb.speechRuleDao.insertOrUpdate(*list.toTypedArray())
+            dbm.speechRuleDao.insertOrUpdate(*list.toTypedArray())
         } else if (file.name.endsWith("replaceRules.json")) {
             val list: List<GroupWithReplaceRule> =
                 AppConst.jsonBuilder.decodeFromString(jsonStr)
-            appDb.replaceRuleDao.insertRuleWithGroup(*list.toTypedArray())
+            dbm.replaceRuleDao.insertRuleWithGroup(*list.toTypedArray())
         } else if (file.name.endsWith("plugins.json")) {
             val list: List<Plugin> = AppConst.jsonBuilder.decodeFromString(jsonStr)
-            appDb.pluginDao.insertOrUpdate(*list.toTypedArray())
+            dbm.pluginDao.insertOrUpdate(*list.toTypedArray())
         }
     }
 
@@ -118,25 +118,25 @@ class BackupRestoreViewModel(application: Application) : AndroidViewModel(applic
             }
 
             is Type.List -> {
-                encodeJsonAndCopyToTmpZipPath(appDb.systemTtsDao.getSysTtsWithGroups(), "list")
+                encodeJsonAndCopyToTmpZipPath(dbm.systemTtsV2.getAllGroupWithTts(), "list")
             }
 
             is Type.SpeechRule -> {
-                encodeJsonAndCopyToTmpZipPath(appDb.speechRuleDao.all, "speechRules")
+                encodeJsonAndCopyToTmpZipPath(dbm.speechRuleDao.all, "speechRules")
             }
 
             is Type.ReplaceRule -> {
                 encodeJsonAndCopyToTmpZipPath(
-                    appDb.replaceRuleDao.allGroupWithReplaceRules(),
+                    dbm.replaceRuleDao.allGroupWithReplaceRules(),
                     "replaceRules"
                 )
             }
 
             is Type.IPlugin -> {
                 if (type.includeVars) {
-                    encodeJsonAndCopyToTmpZipPath(appDb.pluginDao.all, "plugins")
+                    encodeJsonAndCopyToTmpZipPath(dbm.pluginDao.all, "plugins")
                 } else {
-                    encodeJsonAndCopyToTmpZipPath(appDb.pluginDao.all.map {
+                    encodeJsonAndCopyToTmpZipPath(dbm.pluginDao.all.map {
                         it.userVars = mutableMapOf()
                         it
                     }, "plugins")

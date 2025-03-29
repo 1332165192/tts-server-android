@@ -35,8 +35,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
@@ -46,12 +48,12 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.constraintlayout.compose.ConstraintLayout
 import androidx.constraintlayout.compose.Dimension
+import com.github.jing332.common.utils.StringUtils.limitLength
 import com.github.jing332.common.utils.performLongPress
 import com.github.jing332.compose.widgets.LongClickIconButton
 import com.github.jing332.compose.widgets.htmlcompose.HtmlText
 import com.github.jing332.tts_server_android.R
 import com.github.jing332.tts_server_android.conf.AppConfig
-import com.github.jing332.tts_server_android.utils.StringUtils.limitLength
 import org.burnoutcrew.reorderable.ReorderableLazyListState
 import org.burnoutcrew.reorderable.detectReorder
 
@@ -87,26 +89,41 @@ internal fun Item(
         if (limitNameLen == 0) name else name.limitLength(limitNameLen)
     }
 
-    ElevatedCard(modifier) {
+    ElevatedCard(
+        modifier = modifier
+    ) {
         ConstraintLayout(
             Modifier
                 .fillMaxWidth()
                 .wrapContentHeight()
                 .combinedClickable(
+                    onClickLabel = stringResource(R.string.quick_edit),
                     onClick = onClick,
+                    onLongClickLabel = stringResource(R.string.switch_tag),
                     onLongClick = {
                         view.performLongPress()
                         onLongClick()
                     }
                 )
+                .semantics {
+                    customActions = listOf(
+                        CustomAccessibilityAction(context.getString(R.string.edit)) { onEdit(); true },
+                        CustomAccessibilityAction(context.getString(R.string.delete)) { onDelete(); true },
+                        CustomAccessibilityAction(context.getString(R.string.copy)) { onCopy(); true },
+                        CustomAccessibilityAction(context.getString(R.string.audition)) { onAudition(); true },
+                        CustomAccessibilityAction(context.getString(R.string.export_config)) { onExport(); true }
+                    )
+                }
                 .padding(vertical = 4.dp)
         ) {
-            val (checkRef,
+            val (
+                checkRef,
                 nameRef,
                 contentRef,
                 targetRef,
                 typeRef,
-                buttonsRef) = createRefs()
+                buttonsRef,
+            ) = createRefs()
             Row(
                 Modifier
                     .constrainAs(checkRef) {

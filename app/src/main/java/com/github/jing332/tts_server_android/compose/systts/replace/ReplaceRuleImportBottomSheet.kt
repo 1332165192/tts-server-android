@@ -9,12 +9,12 @@ import com.github.jing332.tts_server_android.compose.systts.ConfigImportBottomSh
 import com.github.jing332.tts_server_android.compose.systts.ConfigModel
 import com.github.jing332.tts_server_android.compose.systts.SelectImportConfigDialog
 import com.github.jing332.tts_server_android.constant.AppConst
-import com.github.jing332.tts_server_android.data.appDb
-import com.github.jing332.tts_server_android.data.entities.replace.GroupWithReplaceRule
-import com.github.jing332.tts_server_android.data.entities.replace.ReplaceRule
-import com.github.jing332.tts_server_android.data.entities.replace.ReplaceRuleGroup
-import com.github.jing332.tts_server_android.utils.StringUtils
-import com.github.jing332.tts_server_android.utils.toJsonListString
+import com.github.jing332.database.dbm
+import com.github.jing332.database.entities.replace.GroupWithReplaceRule
+import com.github.jing332.database.entities.replace.ReplaceRule
+import com.github.jing332.database.entities.replace.ReplaceRuleGroup
+import com.github.jing332.common.utils.StringUtils
+import com.github.jing332.common.utils.toJsonListString
 
 @Suppress("UNCHECKED_CAST")
 @Composable
@@ -29,10 +29,10 @@ fun ReplaceRuleImportBottomSheet(onDismissRequest: () -> Unit) {
                     val group = it.first
                     val rule = it.second
 
-                    appDb.replaceRuleDao.insert(rule)
-                    appDb.replaceRuleDao.insertGroup(group)
+                    dbm.replaceRuleDao.insert(rule)
+                    dbm.replaceRuleDao.insertGroup(group)
                 }
-                appDb.replaceRuleDao.updateAllOrder()
+                dbm.replaceRuleDao.updateAllOrder()
                 selectedList.size
             }
         )

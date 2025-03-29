@@ -8,24 +8,25 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import com.drake.net.utils.withIO
+import com.github.jing332.common.utils.longToast
 import com.github.jing332.tts_server_android.R
 import com.github.jing332.tts_server_android.model.updater.AppUpdateChecker
 import com.github.jing332.tts_server_android.model.updater.UpdateResult
-import com.github.jing332.common.utils.longToast
 import kotlinx.coroutines.CancellationException
 
 @Composable
 internal fun AutoUpdateCheckerDialog(
     showUpdateToast: Boolean = true,
-    fromAction: Boolean = false,
-    dismiss: () -> Unit
+    fromGithubAction: Boolean = false,
+    dismiss: () -> Unit,
 ) {
     val context = LocalContext.current
+    val showToast by remember { mutableStateOf(showUpdateToast) }
     var showDialog by remember { mutableStateOf<UpdateResult?>(null) }
     if (showDialog != null) {
         val ret = showDialog!!
         LaunchedEffect(ret) {
-            if (showUpdateToast && ret.hasUpdate())
+            if (showToast && ret.hasUpdate())
                 context.longToast(R.string.new_version_available, ret.version)
         }
         AppUpdateDialog(
@@ -51,10 +52,17 @@ internal fun AutoUpdateCheckerDialog(
         )
     }
 
+    fun noNewVersion() {
+        println("No new version")
+        if (showToast)
+            context.longToast(context.getString(R.string.no_new_version))
+        dismiss()
+    }
+
     LaunchedEffect(Unit) {
         val result = try {
             withIO {
-                if (fromAction) AppUpdateChecker.checkUpdateFromActions()
+                if (fromGithubAction) AppUpdateChecker.checkUpdateFromActions()
                 else AppUpdateChecker.checkUpdate()
             }
         } catch (_: CancellationException) {
@@ -67,13 +75,13 @@ internal fun AutoUpdateCheckerDialog(
 
         if (result is AppUpdateChecker.ActionResult?) {
             if (result == null) {
-                dismiss()
+                noNewVersion()
             } else {
                 showActionDialog = result
             }
         } else if (result is UpdateResult?) {
-            if (result?.hasUpdate() == true) showDialog = result
-            else dismiss()
+            if (result.hasUpdate() == true) showDialog = result
+            else noNewVersion()
         }
     }
 }

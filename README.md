@@ -96,6 +96,8 @@ dev: https://jing332.lanzn.com/b09ig9qla
 
 其他资源：
 
+* <a href="https://www.flaticon.com/free-icons/female" title="female icons">Female icons created by popcornarts - Flaticon</a>
+
 * [阿里巴巴IconFont](https://www.iconfont.cn/)
 
 * [酷安@沉默_9520](http://www.coolapk.com/u/25956307) 本APP图标作者

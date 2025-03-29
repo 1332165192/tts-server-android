@@ -1,4 +1,5 @@
 pluginManagement {
+    includeBuild("build-logic")
     repositories {
         gradlePluginPortal()
         google()
@@ -22,12 +23,9 @@ dependencyResolutionManagement {
 
 rootProject.name = "TTS Server"
 include ':app'
-include ':lib-gojni'
-include ':lib-gojni-aar'
-//include ':lib-tts'
-//include ':lib-script-engine'
-//include ':lib-common'
-//include ':core'
-include ':lib-script-engine'
 include ':lib-common'
 include ':lib-compose'
+include ':lib-database'
+include ':lib-tts'
+include ':lib-script'
+include ':lib-server'

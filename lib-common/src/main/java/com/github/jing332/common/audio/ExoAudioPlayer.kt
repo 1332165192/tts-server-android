@@ -14,6 +14,9 @@ import com.github.jing332.common.audio.ExoPlayerHelper.createMediaSourceFromByte
 import com.github.jing332.common.audio.ExoPlayerHelper.createMediaSourceFromInputStream
 import kotlinx.coroutines.*
 import java.io.InputStream
+import kotlin.coroutines.Continuation
+import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
 
 
 class ExoAudioPlayer(val context: Context) {
@@ -24,10 +27,8 @@ class ExoAudioPlayer(val context: Context) {
         const val MSG_PLAYER_ERROR = "MSG_PLAYER_ERROR"
     }
 
-    // APP内播放音频Job 用于 job.cancel() 取消播放
-    private var mPlayWaitJob: Job? = null
+    private var mContinuation: Continuation<Unit>? = null
 
-    // APP内音频播放器 必须在主线程调用
     private val exoPlayer by lazy {
         ExoPlayer.Builder(context).build().apply {
             playWhenReady = true
@@ -36,7 +37,7 @@ class ExoAudioPlayer(val context: Context) {
                 override fun onPlaybackStateChanged(playbackState: Int) {
                     when (playbackState) {
                         ExoPlayer.STATE_ENDED -> {
-                            mPlayWaitJob?.cancel(MSG_STATE_ENDED)
+                            mContinuation?.resume(Unit)
                         }
                     }
 
@@ -45,18 +46,19 @@ class ExoAudioPlayer(val context: Context) {
 
                 override fun onPlayerError(error: PlaybackException) {
                     super.onPlayerError(error)
-                    mPlayWaitJob?.cancel("onPlayerError", error)
+                    mContinuation?.resumeWithException(error)
                 }
             })
         }
     }
 
     suspend fun play(audio: InputStream, speed: Float = 1f, volume: Float = 1f, pitch: Float = 1f) {
-        playInternal(createMediaSourceFromInputStream(audio), speed, volume, pitch)
+        playInternal(createMediaSourceFromInputStream(context, audio), speed, volume, pitch)
     }
 
     suspend fun play(audio: ByteArray, speed: Float = 1f, volume: Float = 1f, pitch: Float = 1f) {
-        playInternal(createMediaSourceFromByteArray(audio), speed, volume, pitch)
+        if (audio.isNotEmpty())
+            playInternal(createMediaSourceFromByteArray(context, audio), speed, volume, pitch)
     }
 
     @SuppressLint("UnsafeOptInUsageError")
@@ -66,43 +68,24 @@ class ExoAudioPlayer(val context: Context) {
         @FloatRange(from = 0.0, to = 1.0) volume: Float = 1f,
         pitch: Float = 1f,
     ) = coroutineScope {
-        var throwable: Throwable? = null
-        mPlayWaitJob = launch() {
-            try {
-                withMain {
-                    exoPlayer.setMediaSource(mediaSource)
-                    exoPlayer.playbackParameters =
-                        PlaybackParameters(speed, pitch)
-                    exoPlayer.volume = volume
-                    exoPlayer.prepare()
-                }
-                // 一直等待 直到 job.cancel
-                awaitCancellation()
-            } catch (e: CancellationException) {
-                when (e.message) {
-                    MSG_STATE_ENDED -> {
-                        runMain { exoPlayer.stop() }
-                    }
+        withMain {
+            exoPlayer.setMediaSource(mediaSource)
+            exoPlayer.playbackParameters =
+                PlaybackParameters(speed, pitch)
+            exoPlayer.volume = volume
+            exoPlayer.prepare()
+        }
 
-                    MSG_PLAYER_ERROR -> {
-                        throwable = e.cause
-                    }
-
-                    else -> {
-                        runMain { exoPlayer.stop() }
-                    }
-                }
+        suspendCancellableCoroutine<Unit> { continuation ->
+            mContinuation = continuation
+            continuation.invokeOnCancellation {
+                runMain { exoPlayer.stop() }
             }
         }
-        mPlayWaitJob?.join()
-        mPlayWaitJob = null
-
-        throwable?.let { throw it }
     }
 
     fun stop() {
-        mPlayWaitJob?.cancel()
-        mPlayWaitJob = null
+        mContinuation?.context?.cancel()
     }
 
     fun release() {

@@ -10,8 +10,9 @@ import androidx.compose.ui.res.stringResource
 import com.drake.net.utils.withIO
 import com.github.jing332.tts_server_android.R
 import com.github.jing332.tts_server_android.compose.systts.ListSortSettingsDialog
-import com.github.jing332.tts_server_android.data.appDb
-import com.github.jing332.tts_server_android.data.entities.systts.SystemTts
+import com.github.jing332.database.dbm
+import com.github.jing332.database.entities.systts.SystemTtsV2
+import com.github.jing332.database.entities.systts.TtsConfigurationDTO
 
 internal enum class SortFields(@StringRes val strResId: Int) {
     NAME(R.string.name),
@@ -22,7 +23,7 @@ internal enum class SortFields(@StringRes val strResId: Int) {
 }
 
 @Composable
-internal fun SortDialog(onDismissRequest: () -> Unit, list: List<SystemTts>) {
+internal fun SortDialog(onDismissRequest: () -> Unit, list: List<SystemTtsV2>) {
     var index by remember { mutableIntStateOf(0) }
     ListSortSettingsDialog(
         name = list.size.toString(),
@@ -34,15 +35,15 @@ internal fun SortDialog(onDismissRequest: () -> Unit, list: List<SystemTts>) {
             withIO {
                 val sortedList = when (SortFields.values()[index]) {
                     SortFields.NAME -> list.sortedBy { it.displayName }
-                    SortFields.TAG_NAME -> list.sortedBy { it.speechRule.tagName }
-                    SortFields.TYPE -> list.sortedBy { it.tts.getType() }
+                    SortFields.TAG_NAME -> list.sortedBy { (it.config as TtsConfigurationDTO).speechRule.tagName }
+                    SortFields.TYPE -> list.sortedBy { /*it.tts.getType()*/ TODO() }
                     SortFields.ENABLE -> list.sortedBy { it.isEnabled }
                     SortFields.ID -> list.sortedBy { it.id }
                 }.run {
                     if (descending) this.reversed() else this
                 }
                 sortedList.forEachIndexed { i, systemTts ->
-                    appDb.systemTtsDao.updateTts(systemTts.copy(order = i))
+                    dbm.systemTtsV2.update(systemTts.copy(order = i))
                 }
             }
         }

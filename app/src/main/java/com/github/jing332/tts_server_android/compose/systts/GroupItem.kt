@@ -21,7 +21,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TriStateCheckbox
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -33,8 +32,12 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.CustomAccessibilityAction
+import androidx.compose.ui.semantics.collapse
+import androidx.compose.ui.semantics.customActions
+import androidx.compose.ui.semantics.expand
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.unit.dp
 import com.github.jing332.tts_server_android.R
@@ -60,36 +63,10 @@ fun GroupItem(
     val view = LocalView.current
     val context = LocalContext.current
 
-    var expandedFirst by remember { mutableStateOf(true) }
-    LaunchedEffect(isExpanded) {
-        if (expandedFirst) expandedFirst = false
-        else {
-            val msg =
-                if (isExpanded) context.getString(
-                    R.string.group_expanded,
-                    name
-                ) else context.getString(R.string.group_collapsed, name)
-            view.announceForAccessibility(msg)
-        }
-    }
-
-    var checkFirst by remember { mutableStateOf(true) }
-    LaunchedEffect(toggleableState) {
-        if (checkFirst) checkFirst = false
-        else {
-            val msg = when (toggleableState) {
-                ToggleableState.On -> context.getString(R.string.group_all_enabled, name)
-                ToggleableState.Off -> context.getString(R.string.group_all_disabled, name)
-                else -> context.getString(R.string.group_part_enabled, name)
-            }
-            view.announceForAccessibility(msg)
-        }
-    }
-
     var showDeleteDialog by remember { mutableStateOf(false) }
     if (showDeleteDialog)
         ConfigDeleteDialog(
-            onDismissRequest = { showDeleteDialog = false }, name = name, onConfirm = onDelete
+            onDismissRequest = { showDeleteDialog = false }, content = name, onConfirm = onDelete
         )
 
     Row(
@@ -97,10 +74,35 @@ fun GroupItem(
             .fillMaxWidth()
             .background(MaterialTheme.colorScheme.surface)
             .semantics(true) {
-                contentDescription = context.getString(
-                    if (isExpanded) R.string.group_expanded
-                    else R.string.group_collapsed, " "
-                )
+                stateDescription =  when (toggleableState) {
+                    ToggleableState.On -> context.getString(R.string.group_all_enabled, "")
+                    ToggleableState.Off -> context.getString(R.string.group_all_disabled, "")
+                    else -> context.getString(R.string.group_part_enabled, "")
+                }
+
+                customActions =
+                    listOf(
+                        CustomAccessibilityAction(
+                            label = context.getString(R.string.delete), action = { onDelete();true }
+                        ),
+
+                        CustomAccessibilityAction(
+                            label = context.getString(R.string.export_config), action = { onExport();true }
+                        )
+                    )
+
+
+                if (isExpanded) {
+                    collapse(context.getString(R.string.desc_collapse_group, name)) {
+                        onClick()
+                        true
+                    }
+                } else
+                    expand(context.getString(R.string.desc_expand_group, name)) {
+                        onClick()
+                        true
+                    }
+
             }
             .clickable { onClick() }
             .padding(vertical = 4.dp),
@@ -132,7 +134,7 @@ fun GroupItem(
                     onToggleableStateChange(toggleableState != ToggleableState.On)
                 },
                 modifier = Modifier.semantics {
-                    contentDescription = context.getString(
+                    stateDescription = context.getString(
                         when (toggleableState) {
                             ToggleableState.On -> R.string.group_all_enabled
                             ToggleableState.Off -> R.string.group_all_disabled

@@ -1,25 +1,27 @@
 package com.github.jing332.tts_server_android.compose.systts.plugin
 
 import android.content.Intent
-import android.os.Bundle
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.Input
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AppShortcut
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.CleaningServices
 import androidx.compose.material.icons.filled.DeleteForever
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.EditNote
-import androidx.compose.material.icons.filled.Input
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Output
 import androidx.compose.material3.Checkbox
@@ -34,6 +36,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -41,36 +44,40 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.github.jing332.common.utils.longToast
+import com.github.jing332.compose.rememberLazyListReorderCache
+import com.github.jing332.compose.widgets.ShadowedDraggableItem
+import com.github.jing332.database.dbm
+import com.github.jing332.database.entities.plugin.Plugin
 import com.github.jing332.tts_server_android.R
+import com.github.jing332.tts_server_android.compose.AppDefaultProperties
 import com.github.jing332.tts_server_android.compose.LocalNavController
-import com.github.jing332.tts_server_android.compose.ShadowReorderableItem
-import com.github.jing332.tts_server_android.compose.navigateSingleTop
+import com.github.jing332.tts_server_android.compose.SharedViewModel
 import com.github.jing332.tts_server_android.compose.systts.ConfigDeleteDialog
 import com.github.jing332.tts_server_android.constant.AppConst
-import com.github.jing332.tts_server_android.data.appDb
-import com.github.jing332.tts_server_android.data.entities.plugin.Plugin
 import com.github.jing332.tts_server_android.utils.MyTools
 import kotlinx.coroutines.flow.conflate
 import kotlinx.serialization.encodeToString
 import org.burnoutcrew.reorderable.detectReorderAfterLongPress
 import org.burnoutcrew.reorderable.rememberReorderableLazyListState
 import org.burnoutcrew.reorderable.reorderable
-import java.util.Collections
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
-fun PluginManagerScreen(onFinishActivity: () -> Unit) {
+fun PluginManagerScreen(sharedVM: SharedViewModel, onFinishActivity: () -> Unit) {
     var showImportConfig by remember { mutableStateOf(false) }
     if (showImportConfig) {
         PluginImportBottomSheet(onDismissRequest = { showImportConfig = false })
@@ -93,11 +100,12 @@ fun PluginManagerScreen(onFinishActivity: () -> Unit) {
     var showDeleteDialog by remember { mutableStateOf<Plugin?>(null) }
     if (showDeleteDialog != null) {
         val plugin = showDeleteDialog!!
-        ConfigDeleteDialog(onDismissRequest = { showDeleteDialog = null }, name = plugin.name) {
-            appDb.pluginDao.delete(plugin)
+        ConfigDeleteDialog(onDismissRequest = { showDeleteDialog = null }, content = plugin.name) {
+            dbm.pluginDao.delete(plugin)
             showDeleteDialog = null
         }
     }
+
 
     var showVarsSettings by remember { mutableStateOf<Plugin?>(null) }
     if (showVarsSettings != null) {
@@ -106,93 +114,107 @@ fun PluginManagerScreen(onFinishActivity: () -> Unit) {
             showVarsSettings = null
         }
         PluginVarsBottomSheet(onDismissRequest = {
-            appDb.pluginDao.update(plugin)
+            dbm.pluginDao.update(plugin)
             showVarsSettings = null
         }, plugin = plugin) {
             plugin = it
         }
     }
-
     val navController = LocalNavController.current
     val context = LocalContext.current
-    Scaffold(Modifier.fillMaxSize(), topBar = {
-        TopAppBar(
-            title = { Text(stringResource(id = R.string.plugin_manager)) },
-            navigationIcon = {
-                IconButton(onClick = onFinishActivity) {
-                    Icon(
-                        Icons.AutoMirrored.Filled.ArrowBack,
-                        stringResource(id = R.string.nav_back)
-                    )
-                }
-            },
-            actions = {
-                IconButton(onClick = {
-                    navController.navigate(NavRoutes.PluginEdit.id)
-                }) {
-                    Icon(Icons.Default.Add, stringResource(id = R.string.add_config))
-                }
 
-                var showOptions by remember { mutableStateOf(false) }
-                IconButton(onClick = {
-                    showOptions = true
-                }) {
-                    Icon(Icons.Default.MoreVert, stringResource(id = R.string.more_options))
+    fun onEdit(plugin: Plugin = Plugin()) {
+        sharedVM.put(NavRoutes.PluginEdit.KEY_DATA, plugin)
+        navController.navigate(NavRoutes.PluginEdit.id)
+    }
 
-                    DropdownMenu(
-                        expanded = showOptions,
-                        onDismissRequest = { showOptions = false }) {
-                        DropdownMenuItem(
-                            text = { Text(stringResource(id = R.string.import_config)) },
-                            onClick = {
-                                showOptions = false
-                                showImportConfig = true
-                            },
-                            leadingIcon = {
-                                Icon(Icons.Default.Input, null)
-                            }
-                        )
-                        DropdownMenuItem(
-                            text = { Text(stringResource(id = R.string.export_config)) },
-                            onClick = {
-                                showOptions = false
-                                showExportConfig = appDb.pluginDao.allEnabled
-                            },
-                            leadingIcon = {
-                                Icon(Icons.Default.Output, null)
-                            }
-                        )
-                        DropdownMenuItem(
-                            text = { Text(stringResource(id = R.string.desktop_shortcut)) },
-                            onClick = {
-                                showOptions = false
-                                MyTools.addShortcut(
-                                    context,
-                                    context.getString(R.string.plugin_manager),
-                                    "plugin",
-                                    R.drawable.ic_shortcut_plugin,
-                                    Intent(context, PluginManagerActivity::class.java)
-                                )
-                            },
-                            leadingIcon = { Icon(Icons.Default.AppShortcut, null) }
+    val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
+
+    Scaffold(contentWindowInsets = WindowInsets(0),
+        modifier = Modifier
+            .fillMaxSize()
+            .nestedScroll(scrollBehavior.nestedScrollConnection),
+        topBar = {
+            TopAppBar(
+                scrollBehavior = scrollBehavior,
+                title = { Text(stringResource(id = R.string.plugin_manager)) },
+                navigationIcon = {
+                    IconButton(onClick = onFinishActivity) {
+                        Icon(
+                            Icons.AutoMirrored.Filled.ArrowBack,
+                            stringResource(id = R.string.nav_back)
                         )
                     }
+                },
+                actions = {
+                    IconButton(onClick = {
+                        onEdit()
+                    }) {
+                        Icon(Icons.Default.Add, stringResource(id = R.string.add_config))
+                    }
+
+                    var showOptions by remember { mutableStateOf(false) }
+                    IconButton(onClick = {
+                        showOptions = true
+                    }) {
+                        Icon(Icons.Default.MoreVert, stringResource(id = R.string.more_options))
+
+                        DropdownMenu(
+                            expanded = showOptions,
+                            onDismissRequest = { showOptions = false }) {
+                            DropdownMenuItem(
+                                text = { Text(stringResource(id = R.string.import_config)) },
+                                onClick = {
+                                    showOptions = false
+                                    showImportConfig = true
+                                },
+                                leadingIcon = {
+                                    Icon(Icons.AutoMirrored.Filled.Input, null)
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = { Text(stringResource(id = R.string.export_config)) },
+                                onClick = {
+                                    showOptions = false
+                                    showExportConfig = dbm.pluginDao.allEnabled
+                                },
+                                leadingIcon = {
+                                    Icon(Icons.Default.Output, null)
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = { Text(stringResource(id = R.string.desktop_shortcut)) },
+                                onClick = {
+                                    showOptions = false
+                                    MyTools.addShortcut(
+                                        context,
+                                        context.getString(R.string.plugin_manager),
+                                        "plugin",
+                                        R.drawable.ic_shortcut_plugin,
+                                        Intent(context, PluginManagerActivity::class.java)
+                                    )
+                                },
+                                leadingIcon = { Icon(Icons.Default.AppShortcut, null) }
+                            )
+                        }
+                    }
                 }
-            }
-        )
-    }) { paddingValues ->
-        val flowAll = remember { appDb.pluginDao.flowAll().conflate() }
+            )
+        }) { paddingValues ->
+        val flowAll = remember { dbm.pluginDao.flowAll().conflate() }
         val list by flowAll.collectAsStateWithLifecycle(emptyList())
 
-        val reorderState = rememberReorderableLazyListState(onMove = { from, to ->
-            val mutList = list.toMutableList()
-            Collections.swap(mutList, from.index, to.index)
+        val cache = rememberLazyListReorderCache(list)
 
-            mutList.forEachIndexed { index, plugin ->
+        val reorderState = rememberReorderableLazyListState(onMove = { from, to ->
+            cache.move(from.index, to.index)
+        }, onDragEnd = { from, to ->
+            cache.list.forEachIndexed { index, plugin ->
                 if (index != plugin.order)
-                    appDb.pluginDao.update(plugin.copy(order = index))
+                    dbm.pluginDao.update(plugin.copy(order = index))
             }
         })
+
 
         LazyColumn(
             state = reorderState.listState,
@@ -201,59 +223,83 @@ fun PluginManagerScreen(onFinishActivity: () -> Unit) {
                 .padding(paddingValues)
                 .reorderable(reorderState)
         ) {
-            itemsIndexed(list, key = { _, item -> item.id }) { _, item ->
+            itemsIndexed(cache.list, key = { _, item -> item.id }) { _, item ->
                 val desc = remember { "${item.author} - v${item.version}" }
-                ShadowReorderableItem(reorderableState = reorderState, key = item.id) {
+                ShadowedDraggableItem(reorderableState = reorderState, key = item.id) {
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 4.dp, horizontal = 8.dp)
+                        .detectReorderAfterLongPress(reorderState)
                     Item(
                         modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 4.dp, horizontal = 8.dp)
-                            .detectReorderAfterLongPress(reorderState)
-                            .animateItemPlacement(),
+                            .padding(horizontal = 8.dp, vertical = 4.dp)
+                            .detectReorderAfterLongPress(reorderState),
                         hasDefVars = item.defVars.isNotEmpty(),
                         needSetVars = item.defVars.isNotEmpty() && item.userVars.isEmpty(),
                         name = item.name,
                         desc = desc,
+                        iconUrl = item.iconUrl,
                         isEnabled = item.isEnabled,
                         onEnabledChange = {
-                            appDb.pluginDao.update(item.copy(isEnabled = it))
+                            dbm.pluginDao.update(item.copy(isEnabled = it))
                         },
-                        onEdit = {
-                            navController.navigateSingleTop(
-                                NavRoutes.PluginEdit.id,
-                                Bundle().apply {
-                                    putParcelable(NavRoutes.PluginEdit.KEY_DATA, item)
-                                }
-                            )
-                        },
+                        onEdit = { onEdit(item) },
                         onSetVars = { showVarsSettings = item },
                         onDelete = { showDeleteDialog = item },
-                        onExport = {
-                            showExportConfig = listOf(item)
-                        }
+                        onClear = {
+                            PluginManager(item).clearCache()
+                            context.longToast(R.string.clear_cache_ok)
+                        },
+                        onExport = { showExportConfig = listOf(item) }
                     )
                 }
+            }
+
+            item {
+                Spacer(Modifier.padding(bottom = AppDefaultProperties.LIST_END_PADDING))
             }
         }
     }
 }
 
 @Composable
-internal fun Item(
+private fun Item(
     modifier: Modifier,
     hasDefVars: Boolean,
     needSetVars: Boolean,
     name: String,
     desc: String,
+    iconUrl: String?,
     isEnabled: Boolean,
     onEnabledChange: (Boolean) -> Unit,
+    onClear: () -> Unit,
     onEdit: () -> Unit,
     onSetVars: () -> Unit,
     onExport: () -> Unit,
     onDelete: () -> Unit,
 ) {
     val context = LocalContext.current
-    ElevatedCard(modifier = modifier, onClick = {
+    ElevatedCard(modifier = modifier.semantics {
+        customActions =
+            listOf(
+                CustomAccessibilityAction(
+                    context.getString(R.string.edit_desc, name)
+                ) { onEdit();true },
+                CustomAccessibilityAction(
+                    context.getString(R.string.plugin_set_vars, name)
+                ) { onSetVars();true },
+                CustomAccessibilityAction(
+                    context.getString(R.string.export_config)
+                ) { onExport();true },
+
+                CustomAccessibilityAction(
+                    context.getString(R.string.clear_cache, name)
+                ) { onClear();true },
+                CustomAccessibilityAction(
+                    context.getString(R.string.delete, name)
+                ) { onDelete();true },
+            )
+    }, onClick = {
         if (hasDefVars) onSetVars()
     }) {
         Box(modifier = Modifier.padding(4.dp)) {
@@ -274,10 +320,28 @@ internal fun Item(
                             }
                     }
                 )
-                Column(Modifier.weight(1f)) {
-                    Text(text = name, style = MaterialTheme.typography.titleMedium)
-                    Text(text = desc, style = MaterialTheme.typography.bodyMedium)
+
+                PluginImage(model = iconUrl, name = name)
+
+                Column(
+                    Modifier
+                        .weight(1f)
+                        .padding(start = 8.dp)
+                        .fillMaxWidth(),
+                ) {
+                    Text(
+                        text = name,
+                        style = MaterialTheme.typography.titleMedium,
+                        textAlign = TextAlign.Center
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        text = desc,
+                        style = MaterialTheme.typography.bodyMedium,
+                        textAlign = TextAlign.Center
+                    )
                 }
+
                 Row {
                     IconButton(onClick = onEdit) {
                         Icon(Icons.Default.Edit, stringResource(id = R.string.edit_desc, name))
@@ -305,6 +369,8 @@ internal fun Item(
                                     }
                                 )
 
+
+
                             DropdownMenuItem(
                                 text = { Text(stringResource(id = R.string.export_config)) },
                                 onClick = {
@@ -317,6 +383,17 @@ internal fun Item(
                             )
 
                             HorizontalDivider()
+
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.clear_cache)) },
+                                onClick = {
+                                    showOptions = false
+                                    onClear()
+                                },
+                                leadingIcon = {
+                                    Icon(Icons.Default.CleaningServices, null)
+                                }
+                            )
 
                             DropdownMenuItem(
                                 text = {
@@ -347,18 +424,9 @@ internal fun Item(
                 Text(
                     text = stringResource(id = R.string.systts_plugin_please_set_vars),
                     modifier = Modifier.align(Alignment.Center),
-                    fontWeight = FontWeight.Bold,
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.primary
                 )
         }
-    }
-}
-
-@Preview
-@Composable
-fun PreviewPluginManager() {
-    MaterialTheme {
-        PluginManagerScreen(onFinishActivity = {})
     }
 }

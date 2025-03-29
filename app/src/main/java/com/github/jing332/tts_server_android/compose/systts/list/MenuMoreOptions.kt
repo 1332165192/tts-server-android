@@ -1,14 +1,13 @@
 package com.github.jing332.tts_server_android.compose.systts.list
 
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Input
+import androidx.compose.material.icons.automirrored.filled.ManageSearch
+import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.filled.Audiotrack
 import androidx.compose.material.icons.filled.ContentCut
 import androidx.compose.material.icons.filled.Group
-import androidx.compose.material.icons.filled.Input
-import androidx.compose.material.icons.filled.ManageSearch
-import androidx.compose.material.icons.filled.MenuBook
 import androidx.compose.material.icons.filled.Output
-import androidx.compose.material.icons.filled.SmartDisplay
 import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -23,14 +22,15 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import com.github.jing332.common.utils.startActivity
+import com.github.jing332.compose.widgets.CheckedMenuItem
 import com.github.jing332.tts_server_android.R
 import com.github.jing332.tts_server_android.compose.asAppCompatActivity
 import com.github.jing332.tts_server_android.compose.systts.plugin.PluginManagerActivity
 import com.github.jing332.tts_server_android.compose.systts.replace.ReplaceManagerActivity
 import com.github.jing332.tts_server_android.compose.systts.speechrule.SpeechRuleManagerActivity
-import com.github.jing332.compose.widgets.CheckedMenuItem
 import com.github.jing332.tts_server_android.conf.SystemTtsConfig
-import com.github.jing332.common.utils.startActivity
+import com.github.jing332.tts_server_android.service.systts.SystemTtsService
 
 @Composable
 internal fun MenuMoreOptions(
@@ -46,16 +46,11 @@ internal fun MenuMoreOptions(
     if (showImportSheet)
         ListImportBottomSheet(onDismissRequest = { showImportSheet = false })
 
-    var showInternalPlayerDialog by remember { mutableStateOf(false) }
-    if (showInternalPlayerDialog)
-        InternalPlayerDialog {
-            showInternalPlayerDialog = false
-        }
-
     var showAudioParamsDialog by remember { mutableStateOf(false) }
     if (showAudioParamsDialog)
         GlobalAudioParamsDialog {
             showAudioParamsDialog = false
+            SystemTtsService.notifyUpdateConfig()
         }
 
     val context = LocalContext.current
@@ -83,23 +78,13 @@ internal fun MenuMoreOptions(
             checked = isMultiVoice,
             onClick = {
                 isMultiVoice = it
+                SystemTtsService.notifyUpdateConfig()
             },
             leadingIcon = {
                 Icon(Icons.Default.Group, null)
             },
         )
         HorizontalDivider()
-
-        var isInternalPlayer by remember { SystemTtsConfig.isInternalPlayerEnabled }
-        CheckedMenuItem(
-            text = { Text(stringResource(id = R.string.systts_use_internal_audio_player)) },
-            checked = isInternalPlayer,
-            onClick = { showInternalPlayerDialog = true },
-            onClickCheckBox = { isInternalPlayer = it },
-            leadingIcon = {
-                Icon(Icons.Default.SmartDisplay, null)
-            }
-        )
 
         DropdownMenuItem(
             text = { Text(stringResource(id = R.string.audio_params)) },
@@ -125,7 +110,7 @@ internal fun MenuMoreOptions(
                 context.startActivity(SpeechRuleManagerActivity::class.java)
             },
             leadingIcon = {
-                Icon(Icons.Default.MenuBook, null)
+                Icon(Icons.AutoMirrored.Default.MenuBook, null)
             }
         )
 
@@ -151,7 +136,7 @@ internal fun MenuMoreOptions(
                 SystemTtsConfig.isReplaceEnabled.value = it
             },
             leadingIcon = {
-                Icon(Icons.Default.ManageSearch, null)
+                Icon(Icons.AutoMirrored.Default.ManageSearch, null)
             }
         )
 
@@ -162,7 +147,7 @@ internal fun MenuMoreOptions(
             onDismissRequest()
             showImportSheet = true },
             leadingIcon = {
-                Icon(Icons.Default.Input, null)
+                Icon(Icons.AutoMirrored.Default.Input, null)
             }
         )
 

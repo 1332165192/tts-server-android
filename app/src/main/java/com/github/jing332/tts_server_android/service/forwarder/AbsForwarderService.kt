@@ -3,7 +3,11 @@
 package com.github.jing332.tts_server_android.service.forwarder
 
 import android.annotation.SuppressLint
-import android.app.*
+import android.app.IntentService
+import android.app.Notification
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
@@ -13,17 +17,21 @@ import android.os.PowerManager
 import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
 import androidx.core.content.ContextCompat
-import com.github.jing332.tts_server_android.R
-import com.github.jing332.tts_server_android.constant.AppConst
-import com.github.jing332.tts_server_android.constant.KeyConst
-import com.github.jing332.tts_server_android.constant.AppLog
+import com.drake.net.utils.withMain
+import com.github.jing332.common.LogEntry
 import com.github.jing332.common.LogLevel
-import com.github.jing332.lib_gojni.NativeUtils
-import com.github.jing332.tts_server_android.ui.ImportConfigActivity
 import com.github.jing332.common.utils.ClipboardUtils
+import com.github.jing332.common.utils.NetworkUtils
 import com.github.jing332.common.utils.registerGlobalReceiver
 import com.github.jing332.common.utils.startForegroundCompat
 import com.github.jing332.common.utils.toast
+import com.github.jing332.tts_server_android.R
+import com.github.jing332.tts_server_android.compose.MainActivity
+import com.github.jing332.tts_server_android.constant.AppConst
+import com.github.jing332.tts_server_android.constant.KeyConst
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import splitties.systemservices.powerManager
 
 @Suppress("DEPRECATION")
@@ -31,12 +39,12 @@ abstract class AbsForwarderService(
     private val name: String,
     private val id: Int,
     private val actionLog: String,
-    private val actionStarting: String,
+    private val actionStarted: String,
     private val actionClosed: String,
     private val notificationChanId: String,
     @StringRes val notificationChanTitle: Int,
     @StringRes val notificationTitle: Int,
-    @DrawableRes val notificationIcon: Int
+    @DrawableRes val notificationIcon: Int,
 ) : IntentService(name) {
     private val notificationActionCopyUrl = "ACTION_NOTIFICATION_COPY_URL_$name"
     private val notificationActionClose = "ACTION_NOTIFICATION_CLOSE_$name"
@@ -56,18 +64,20 @@ abstract class AbsForwarderService(
     abstract val port: Int
     abstract val isWakeLockEnabled: Boolean
 
+    private var listenAddress: String = ""
     private val mNotificationReceiver = NotificationActionReceiver()
-
-    fun listenAddress(): String {
-        return NativeUtils.getOutboundIP() + ":" + port
-    }
+    protected val scope = CoroutineScope(Dispatchers.Default)
 
     @SuppressLint("WakelockTimeout", "UnspecifiedRegisterReceiverFlag")
     override fun onCreate() {
         super.onCreate()
         isRunning = true
 
-        initNotification()
+        scope.launch {
+            val host = NetworkUtils.getLocalIpAddress().firstOrNull()?.hostName ?: "localhost"
+            listenAddress = "$host:$port"
+            withMain { initNotification(listenAddress) }
+        }
 
         registerGlobalReceiver(
             listOf(notificationActionCopyUrl, notificationActionClose),
@@ -87,33 +97,31 @@ abstract class AbsForwarderService(
 
     override fun onHandleIntent(intent: Intent?) {
         synchronized(this) {
-            notifiStarted()
             kotlin.runCatching {
                 startServer()
             }.onFailure {
                 sendLog(LogLevel.ERROR, it.localizedMessage ?: it.toString())
             }
-            notifiClosed()
         }
     }
 
-    private fun notifiStarted() {
-        val intent = Intent(actionStarting)
+    protected fun notifiStarted() {
+        val intent = Intent(actionStarted)
         AppConst.localBroadcast.sendBroadcast(intent)
     }
 
-    private fun notifiClosed() {
+    protected fun notifiClosed() {
         val intent = Intent(actionClosed)
         AppConst.localBroadcast.sendBroadcast(intent)
     }
 
-    protected fun sendLog(log: AppLog) {
+    protected fun sendLog(log: LogEntry) {
         val intent = Intent(actionLog).apply { putExtra(KeyConst.KEY_DATA, log) }
         AppConst.localBroadcast.sendBroadcast(intent)
     }
 
     protected fun sendLog(@LogLevel level: Int, msg: String) {
-        sendLog(AppLog(level, msg))
+        sendLog(LogEntry(level, msg))
     }
 
     override fun onDestroy() {
@@ -125,7 +133,7 @@ abstract class AbsForwarderService(
         wakeLock = null
     }
 
-    private fun initNotification() {
+    private fun initNotification(localAddress: String) {
         /*Android 12(S)+ 必须指定PendingIntent.FLAG_*/
         val pendingIntentFlags = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S)
             PendingIntent.FLAG_IMMUTABLE
@@ -137,7 +145,7 @@ abstract class AbsForwarderService(
             PendingIntent.getActivity(
                 this, 0, Intent(
                     this,
-                    ImportConfigActivity::class.java
+                    MainActivity::class.java
                 ).apply {
 //                    putExtra(
 //                        ImportConfigActivity.KEY_FRAGMENT_INDEX,
@@ -182,7 +190,7 @@ abstract class AbsForwarderService(
         val notification = builder
             .setColor(ContextCompat.getColor(this, R.color.md_theme_light_primary))
             .setContentTitle(getString(notificationTitle))
-            .setContentText(getString(R.string.server_listen_address_local, listenAddress()))
+            .setContentText(getString(R.string.server_listen_address_local, localAddress))
             .setSmallIcon(smallIconRes)
             .setContentIntent(pendingIntent)
             .addAction(0, getString(R.string.exit), closePendingIntent)
@@ -197,7 +205,7 @@ abstract class AbsForwarderService(
         override fun onReceive(ctx: Context?, intent: Intent?) {
             when (intent?.action) {
                 notificationActionCopyUrl -> {
-                    ClipboardUtils.copyText(listenAddress())
+                    ClipboardUtils.copyText(listenAddress)
                     toast(R.string.copied)
                 }
 

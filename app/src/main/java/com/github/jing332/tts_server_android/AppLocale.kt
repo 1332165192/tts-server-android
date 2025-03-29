@@ -11,6 +11,7 @@ import com.github.jing332.tts_server_android.utils.sysConfiguration
 import java.io.File
 import java.util.*
 
+fun Locale.toCode():String = "${language}-${country}"
 
 @Suppress("DEPRECATION")
 object AppLocale {
@@ -73,7 +74,7 @@ object AppLocale {
      * 当前App语言
      */
     @SuppressLint("ObsoleteSdkInt")
-    fun getAppLocale(context: Context): Locale {
+    fun current(context: Context): Locale {
         val locale: Locale
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
             locale = context.resources.configuration.locales[0]
@@ -96,7 +97,7 @@ object AppLocale {
      * 判断App语言和设置语言是否相同
      */
     fun isSameWithSetting(context: Context): Boolean {
-        val locale = getAppLocale(context)
+        val locale = current(context)
         val language = locale.language
         val country = locale.country
         val pfLocale = getLocaleFromFile(context)

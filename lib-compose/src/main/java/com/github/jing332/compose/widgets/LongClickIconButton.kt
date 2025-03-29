@@ -7,11 +7,11 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.ripple.rememberRipple
 import androidx.compose.material3.IconButtonColors
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.minimumInteractiveComponentSize
+import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.State
@@ -21,26 +21,27 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import com.github.jing332.common.utils.performLongPress
 
-@OptIn(ExperimentalFoundationApi::class)
+ @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun LongClickIconButton(
     modifier: Modifier = Modifier,
     onClick: () -> Unit,
+    onClickLabel: String? = null,
     onLongClick: () -> Unit,
     onLongClickLabel: String? = null,
     enabled: Boolean = true,
     colors: IconButtonColors = IconButtonDefaults.iconButtonColors(),
     interactionSource: MutableInteractionSource = remember { MutableInteractionSource() },
-    content: @Composable () -> Unit
+    content: @Composable () -> Unit,
 ) {
     val stateLayerSize = 40.0.dp
     val view = LocalView.current
+
     Box(
         modifier = modifier
             .minimumInteractiveComponentSize()
@@ -49,6 +50,7 @@ fun LongClickIconButton(
             .background(color = colors.mContainerColor(enabled).value)
             .combinedClickable(
                 onClick = onClick,
+                onClickLabel = onClickLabel,
                 onLongClick = {
                     view.performLongPress()
                     onLongClick()
@@ -57,16 +59,12 @@ fun LongClickIconButton(
                 enabled = enabled,
                 role = Role.Button,
                 interactionSource = interactionSource,
-                indication = rememberRipple(
-                    bounded = false,
-                    radius = stateLayerSize / 2
-                )
+                indication = ripple()
             ),
         contentAlignment = Alignment.Center
     ) {
         val contentColor = colors.mContentColor(enabled).value
         CompositionLocalProvider(LocalContentColor provides contentColor, content = content)
-        content()
     }
 }
 

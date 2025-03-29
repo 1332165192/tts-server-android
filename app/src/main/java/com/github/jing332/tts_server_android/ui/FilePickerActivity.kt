@@ -11,7 +11,6 @@ import android.os.Parcelable
 import androidx.activity.compose.setContent
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.width
@@ -30,18 +29,19 @@ import androidx.core.app.ActivityCompat
 import androidx.core.net.toUri
 import androidx.lifecycle.lifecycleScope
 import com.drake.net.utils.withMain
-import com.github.jing332.tts_server_android.R
-import com.github.jing332.tts_server_android.compose.theme.AppTheme
-import com.github.jing332.compose.widgets.AppSelectionDialog
-import com.github.jing332.tts_server_android.conf.AppConfig
-import com.github.jing332.tts_server_android.constant.FilePickerMode
-import com.github.jing332.tts_server_android.help.ByteArrayBinder
-import com.github.jing332.tts_server_android.ui.view.AppDialogs.displayErrorDialog
 import com.github.jing332.common.utils.FileUtils
 import com.github.jing332.common.utils.FileUtils.mimeType
 import com.github.jing332.common.utils.getBinder
 import com.github.jing332.common.utils.grantReadWritePermission
 import com.github.jing332.common.utils.toast
+import com.github.jing332.compose.widgets.AppSelectionDialog
+import com.github.jing332.tts_server_android.R
+import com.github.jing332.tts_server_android.compose.ComposeActivity
+import com.github.jing332.tts_server_android.compose.theme.AppTheme
+import com.github.jing332.tts_server_android.conf.AppConfig
+import com.github.jing332.tts_server_android.constant.FilePickerMode
+import com.github.jing332.tts_server_android.help.ByteArrayBinder
+import com.github.jing332.tts_server_android.ui.view.AppDialogs.displayErrorDialog
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.parcelize.IgnoredOnParcel
@@ -53,7 +53,7 @@ import java.io.File
 
 
 @Suppress("DEPRECATION")
-class FilePickerActivity : AppCompatActivity() {
+class FilePickerActivity : ComposeActivity() {
     companion object {
         const val KEY_REQUEST_DATA = "KEY_REQUEST_DATA"
         private const val REQUEST_CODE_SAVE_FILE = 123321

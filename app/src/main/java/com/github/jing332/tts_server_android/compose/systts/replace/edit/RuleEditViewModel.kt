@@ -1,7 +1,7 @@
 package com.github.jing332.tts_server_android.compose.systts.replace.edit
 
 import androidx.lifecycle.ViewModel
-import com.github.jing332.tts_server_android.data.entities.replace.ReplaceRule
+import com.github.jing332.database.entities.replace.ReplaceRule
 
 class RuleEditViewModel : ViewModel() {
     fun doReplace(rule: ReplaceRule, text: String): String {

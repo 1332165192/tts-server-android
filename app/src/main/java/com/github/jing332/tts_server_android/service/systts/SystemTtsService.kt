@@ -1,73 +1,101 @@
 package com.github.jing332.tts_server_android.service.systts
 
+import android.app.ForegroundServiceStartNotAllowedException
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
+import android.app.ServiceStartNotAllowedException
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.content.res.Resources
 import android.graphics.Color
+import android.media.AudioFormat
 import android.net.wifi.WifiManager
 import android.os.Build
 import android.os.PowerManager
-import android.speech.tts.SynthesisCallback
 import android.speech.tts.SynthesisRequest
 import android.speech.tts.TextToSpeech
 import android.speech.tts.TextToSpeechService
 import android.speech.tts.Voice
 import android.util.Log
+import androidx.annotation.StringRes
+import androidx.compose.ui.res.stringResource
+import androidx.core.app.NotificationManagerCompat
+import androidx.core.app.ServiceCompat.stopForeground
 import androidx.core.content.ContextCompat
-import com.github.jing332.tts_server_android.R
-import com.github.jing332.tts_server_android.compose.MainActivity
-import com.github.jing332.tts_server_android.constant.AppConst
-import com.github.jing332.tts_server_android.constant.KeyConst
-import com.github.jing332.common.LogLevel
-import com.github.jing332.tts_server_android.constant.SystemNotificationConst
-import com.github.jing332.tts_server_android.data.appDb
-import com.github.jing332.tts_server_android.conf.SysTtsConfig
-import com.github.jing332.tts_server_android.model.speech.tts.ITextToSpeechEngine
-import com.github.jing332.tts_server_android.service.systts.help.TextToSpeechManager
-import com.github.jing332.tts_server_android.service.systts.help.exception.ConfigLoadException
-import com.github.jing332.tts_server_android.service.systts.help.exception.PlayException
-import com.github.jing332.tts_server_android.service.systts.help.exception.RequestException
-import com.github.jing332.tts_server_android.service.systts.help.exception.SpeechRuleException
-import com.github.jing332.tts_server_android.service.systts.help.exception.TextReplacerException
-import com.github.jing332.tts_server_android.service.systts.help.exception.TtsManagerException
-import com.github.jing332.tts_server_android.constant.AppLog
-import com.github.jing332.tts_server_android.utils.StringUtils.limitLength
+import com.github.jing332.common.utils.limitLength
 import com.github.jing332.common.utils.longToast
 import com.github.jing332.common.utils.registerGlobalReceiver
-import com.github.jing332.common.utils.rootCause
 import com.github.jing332.common.utils.runOnUI
+import com.github.jing332.common.utils.sizeToReadable
 import com.github.jing332.common.utils.startForegroundCompat
-import com.github.jing332.tts_server_android.utils.toHtmlBold
-import com.github.jing332.tts_server_android.utils.toHtmlItalic
-import com.github.jing332.tts_server_android.utils.toHtmlSmall
+import com.github.jing332.common.utils.toHtmlBold
+import com.github.jing332.common.utils.toHtmlSmall
+import com.github.jing332.database.dbm
+import com.github.jing332.database.entities.systts.AudioParams
+import com.github.jing332.database.entities.systts.SystemTtsV2
+import com.github.jing332.database.entities.systts.TtsConfigurationDTO
+import com.github.jing332.tts.ConfigType
+import com.github.jing332.tts.MixSynthesizer
+import com.github.jing332.tts.SynthesizerConfig
+import com.github.jing332.tts.error.StreamProcessorError
+import com.github.jing332.tts.error.SynthesisError
+import com.github.jing332.tts.error.TextProcessorError
+import com.github.jing332.tts.synthesizer.RequestPayload
+import com.github.jing332.tts.synthesizer.SystemParams
+import com.github.jing332.tts.synthesizer.event.ErrorEvent
+import com.github.jing332.tts.synthesizer.event.Event
+import com.github.jing332.tts.synthesizer.event.IEventDispatcher
+import com.github.jing332.tts.synthesizer.event.NormalEvent
+import com.github.jing332.tts_server_android.R
+import com.github.jing332.tts_server_android.compose.MainActivity
+import com.github.jing332.tts_server_android.conf.SysTtsConfig
+import com.github.jing332.tts_server_android.constant.AppConst
+import com.github.jing332.tts_server_android.constant.SystemNotificationConst
+import com.github.jing332.tts_server_android.service.systts.SystemTtsService.Companion.ACTION_NOTIFY_CANCEL
+import com.github.jing332.tts_server_android.service.systts.SystemTtsService.Companion.ACTION_NOTIFY_KILL_PROCESS
+import com.github.jing332.tts_server_android.service.systts.SystemTtsService.Companion.ACTION_UPDATE_CONFIG
+import com.github.jing332.tts_server_android.service.systts.SystemTtsService.Companion.ACTION_UPDATE_REPLACER
+import com.github.jing332.tts_server_android.service.systts.SystemTtsService.Companion.NOTIFICATION_CHAN_ID
+import com.github.jing332.tts_server_android.service.systts.help.TextProcessor
+import com.github.michaelbull.result.Err
+import com.github.michaelbull.result.Ok
+import com.github.michaelbull.result.Result
+import com.github.michaelbull.result.onFailure
+import com.github.michaelbull.result.onSuccess
+import com.github.michaelbull.result.runCatching
+import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import splitties.init.appCtx
+import java.nio.ByteBuffer
 import java.util.Locale
+import kotlin.jvm.Throws
 import kotlin.system.exitProcess
 
 
 @Suppress("DEPRECATION")
-class SystemTtsService : TextToSpeechService(), TextToSpeechManager.Listener {
+class SystemTtsService : TextToSpeechService(), IEventDispatcher {
     companion object {
-        const val TAG = "SysTtsService"
-        const val ACTION_ON_LOG = "SYS_TTS_ON_LOG"
-        const val ACTION_UPDATE_CONFIG = "on_config_changed"
-        const val ACTION_UPDATE_REPLACER = "on_replacer_changed"
+        const val TAG = "SystemTtsService"
+        private val logger = KotlinLogging.logger(TAG)
 
-        const val ACTION_NOTIFY_CANCEL = "SYS_TTS_NOTIFY_CANCEL"
-        const val ACTION_NOTIFY_KILL_PROCESS = "SYS_TTS_NOTIFY_EXIT_0"
+        const val ACTION_UPDATE_CONFIG = "tts.update_config"
+        const val ACTION_UPDATE_REPLACER = "tts.update_replacer"
+
+        const val ACTION_NOTIFY_CANCEL = "tts.notification.cancel"
+        const val ACTION_NOTIFY_KILL_PROCESS = "tts.notification.exit"
         const val NOTIFICATION_CHAN_ID = "system_tts_service"
 
         const val DEFAULT_VOICE_NAME = "DEFAULT_默认"
+        const val PARAM_BGM_ENABLED = "bgm_enabled"
 
         /**
          * 更新配置
@@ -83,14 +111,15 @@ class SystemTtsService : TextToSpeechService(), TextToSpeechManager.Listener {
     private val mCurrentLanguage: MutableList<String> = mutableListOf("zho", "CHN", "")
 
 
-    private val mTtsManager: TextToSpeechManager by lazy {
-        TextToSpeechManager(this).also { it.listener = this }
-    }
+    private val mTextProcessor = TextProcessor()
+    private var mTtsManager: MixSynthesizer? = null
+
 
     private val mNotificationReceiver: NotificationReceiver by lazy { NotificationReceiver() }
     private val mLocalReceiver: LocalReceiver by lazy { LocalReceiver() }
 
-    private val mScope = CoroutineScope(Job())
+    private lateinit var mScope: CoroutineScope
+
 
     // WIFI 锁
     private val mWifiLock by lazy {
@@ -103,6 +132,8 @@ class SystemTtsService : TextToSpeechService(), TextToSpeechManager.Listener {
 
     override fun onCreate() {
         super.onCreate()
+        updateNotification(getString(R.string.systts_service), "")
+        mScope = CoroutineScope(Dispatchers.IO)
 
         registerGlobalReceiver(
             listOf(ACTION_NOTIFY_KILL_PROCESS, ACTION_NOTIFY_CANCEL), mNotificationReceiver
@@ -110,7 +141,9 @@ class SystemTtsService : TextToSpeechService(), TextToSpeechManager.Listener {
 
         AppConst.localBroadcast.registerReceiver(
             mLocalReceiver,
-            IntentFilter(ACTION_UPDATE_CONFIG)
+            IntentFilter(ACTION_UPDATE_CONFIG).apply {
+                addAction(ACTION_UPDATE_REPLACER)
+            }
         )
 
         if (SysTtsConfig.isWakeLockEnabled)
@@ -122,13 +155,51 @@ class SystemTtsService : TextToSpeechService(), TextToSpeechManager.Listener {
         mWakeLock?.acquire(60 * 20 * 100)
         mWifiLock.acquire()
 
-        mTtsManager.load()
+
+        initManager()
+    }
+
+    fun initManager() {
+        logger.debug { "initialize or load configruation" }
+        mScope.launch {
+            mTtsManager = mTtsManager ?: MixSynthesizer.global.apply {
+                context.androidContext = appCtx
+                context.event = this@SystemTtsService
+                context.cfg = SynthesizerConfig(
+                    requestTimeout = SysTtsConfig::requestTimeout,
+                    maxRetryTimes = SysTtsConfig::maxRetryCount,
+                    streamPlayEnabled = SysTtsConfig::isStreamPlayModeEnabled,
+                    silenceSkipEnabled = SysTtsConfig::isSkipSilentAudio,
+                    bgmShuffleEnabled = SysTtsConfig::isBgmShuffleEnabled,
+                    bgmVolume = SysTtsConfig::bgmVolume,
+                    audioParams = {
+                        AudioParams(
+                            speed = SysTtsConfig.audioParamsSpeed,
+                            volume = SysTtsConfig.audioParamsVolume,
+                            pitch = SysTtsConfig.audioParamsPitch
+                        )
+                    }
+                )
+                textProcessor = mTextProcessor
+            }
+
+            mTtsManager!!.init()
+        }
+    }
+
+    fun loadReplacer() {
+        mTextProcessor.loadReplacer()
     }
 
     override fun onDestroy() {
+        logger.debug { "service destroy" }
         super.onDestroy()
 
-        mTtsManager.destroy()
+        mScope.launch(Dispatchers.Main) {
+            mTtsManager?.destroy()
+            mTtsManager = null
+            logger.debug { "destoryed" }
+        }
         unregisterReceiver(mNotificationReceiver)
         AppConst.localBroadcast.unregisterReceiver(mLocalReceiver)
 
@@ -165,7 +236,7 @@ class SystemTtsService : TextToSpeechService(), TextToSpeechManager.Listener {
     override fun onGetDefaultVoiceNameFor(
         lang: String?,
         country: String?,
-        variant: String?
+        variant: String?,
     ): String {
         return DEFAULT_VOICE_NAME
     }
@@ -175,21 +246,25 @@ class SystemTtsService : TextToSpeechService(), TextToSpeechManager.Listener {
         val list =
             mutableListOf(Voice(DEFAULT_VOICE_NAME, Locale.getDefault(), 0, 0, true, emptySet()))
 
-        appDb.systemTtsDao.getSysTtsWithGroups().forEach {
-            it.list.forEach { tts ->
-                list.add(
-                    Voice(
-                        /* name = */ "${tts.displayName}_${tts.id}",
-                        /* locale = */ Locale.forLanguageTag(tts.tts.locale),
-                        /* quality = */ 0,
-                        /* latency = */ 0,
-                        /* requiresNetworkConnection = */true,
-                        /* features = */mutableSetOf<String>().apply {
-                            add(tts.order.toString())
-                            add(tts.id.toString())
-                        }
+        dbm.systemTtsV2.getAllGroupWithTts().forEach { groups ->
+            groups.list.forEach { it ->
+                if (it.config is TtsConfigurationDTO) {
+                    val tts = (it.config as TtsConfigurationDTO).source
+
+                    list.add(
+                        Voice(
+                            /* name = */ "${it.displayName}_${it.id}",
+                            /* locale = */ Locale.forLanguageTag(tts.locale),
+                            /* quality = */ 0,
+                            /* latency = */ 0,
+                            /* requiresNetworkConnection = */true,
+                            /* features = */mutableSetOf<String>().apply {
+                                add(it.order.toString())
+                                add(it.id.toString())
+                            }
+                        )
                     )
-                )
+                }
 
             }
         }
@@ -202,15 +277,15 @@ class SystemTtsService : TextToSpeechService(), TextToSpeechManager.Listener {
         if (isDefault) return TextToSpeech.SUCCESS
 
         val index =
-            appDb.systemTtsDao.allTts.indexOfFirst { "${it.displayName}_${it.id}" == voiceName }
+            dbm.systemTtsV2.all.indexOfFirst { "${it.displayName}_${it.id}" == voiceName }
 
         return if (index == -1) TextToSpeech.ERROR else TextToSpeech.SUCCESS
     }
 
     override fun onStop() {
-        Log.d(TAG, "onStop")
-        mTtsManager.stop()
+        logger.debug { getString(R.string.cancel) }
         synthesizerJob?.cancel()
+        synthesizerJob = null
         updateNotification(getString(R.string.systts_state_idle), "")
     }
 
@@ -218,10 +293,29 @@ class SystemTtsService : TextToSpeechService(), TextToSpeechManager.Listener {
     private var synthesizerJob: Job? = null
     private var mNotificationJob: Job? = null
 
-    override fun onSynthesizeText(request: SynthesisRequest, callback: SynthesisCallback) {
 
-        if (request.charSequenceText == null ||
-            request.charSequenceText.isBlank()) {
+    private fun getConfigIdFromVoiceName(voiceName: String): Result<Long?, Unit> {
+        if (voiceName.isNotBlank()) {
+            val voiceSplitList = voiceName.split("_")
+            if (voiceSplitList.isEmpty()) {
+                return Err(Unit)
+            } else {
+                voiceSplitList.getOrNull(voiceSplitList.size - 1)?.let { idStr ->
+                    return Ok(idStr.toLongOrNull())
+                }
+            }
+        }
+        return Ok(null)
+    }
+
+    override fun onSynthesizeText(
+        request: SynthesisRequest,
+        callback: android.speech.tts.SynthesisCallback,
+    ) {
+        val text = request.charSequenceText.toString().trim()
+        if (text.isBlank()) {
+            logger.debug { "Skip empty text request" }
+            callback.start(16000, AudioFormat.ENCODING_PCM_16BIT, 1)
             callback.done()
             return
         }
@@ -229,40 +323,67 @@ class SystemTtsService : TextToSpeechService(), TextToSpeechManager.Listener {
         mNotificationJob?.cancel()
         reNewWakeLock()
         startForegroundService()
-        val text = request.charSequenceText.toString().trim()
         mCurrentText = text
         updateNotification(getString(R.string.systts_state_synthesizing), text)
 
-        // 调用者指定ID
-        var ttsId = -1L
-        if (!request.voiceName.isNullOrEmpty()) {
-            val voiceSplitList = request.voiceName?.split("_") ?: emptyList()
-            if (voiceSplitList.isEmpty()) {
-                longToast(R.string.voice_name_bad_format)
-                voiceSplitList.getOrNull(voiceSplitList.size - 1)?.let { idStr ->
-                    ttsId = idStr.toLongOrNull() ?: -1L
-                }
-            }
-        }
+        val enabledBgm = request.params.getBoolean(PARAM_BGM_ENABLED, true)
+        mTtsManager?.context?.cfg?.bgmEnabled = { enabledBgm }
 
         runBlocking {
-            synthesizerJob = launch {
-                mTtsManager.textToAudio(
-                    ttsId = ttsId,
-                    text = text,
-                    sysRate = (request.speechRate * 100) / 500, // < 100
-                    sysPitch = request.pitch - 100, // 默认0,
-                    onStart = { sampleRate, bitRate ->
-                        callback.start(sampleRate, bitRate, 1)
+            // If the voiceName is not empty, get the configuration ID from the voiceName.
+            var cfgId: Long? = getConfigIdFromVoiceName(request.voiceName ?: "").onFailure {
+                longToast(R.string.voice_name_bad_format)
+                callback.error(TextToSpeech.ERROR_INVALID_REQUEST)
+                callback.done()
+                return@runBlocking
+            }.value
+            synthesizerJob = mScope.launch {
+                mTtsManager?.synthesize(
+                    params = SystemParams(text = request.charSequenceText.toString()),
+                    forceConfigId = cfgId,
+                    callback = object :
+                        com.github.jing332.tts.synthesizer.SynthesisCallback {
+                        override fun onSynthesizeStart(sampleRate: Int) {
+                            callback.start(
+                                /* sampleRateInHz = */ sampleRate,
+                                /* audioFormat = */ AudioFormat.ENCODING_PCM_16BIT,
+                                /* channelCount = */ 1
+                            )
+                        }
+
+                        override fun onSynthesizeAvailable(audio: ByteArray) {
+                            writeToCallBack(callback, audio)
+                        }
+
                     }
-                ) {
-                    writeToCallBack(callback, it)
+                )?.onSuccess {
+                    logger.debug { "done" }
+                    callback.done()
+                }?.onFailure {
+                    when (it) {
+                        SynthesisError.ConfigEmpty -> {
+                            callback.error(TextToSpeech.ERROR_SYNTHESIS)
+                        }
+
+                        is SynthesisError.TextHandle -> {
+                            // eventListener already handled
+                            // handleTextProcessorError(it.err)
+                            callback.error(TextToSpeech.ERROR_INVALID_REQUEST)
+                        }
+
+                        is SynthesisError.PresetMissing -> {
+                            logE(R.string.tts_config_not_exist)
+                            longToast(R.string.tts_config_not_exist)
+                            callback.error(TextToSpeech.ERROR_INVALID_REQUEST)
+                        }
+                    }
+                    callback.done()
                 }
-            }.job
-            synthesizerJob!!.join()
+            }
+            synthesizerJob?.join()
+
         }
-        callback.done()
-        Log.i(TAG, "done...................")
+
 
         mNotificationJob = mScope.launch {
             delay(5000)
@@ -271,18 +392,20 @@ class SystemTtsService : TextToSpeechService(), TextToSpeechManager.Listener {
         }
     }
 
-    private fun writeToCallBack(callback: SynthesisCallback, pcmData: ByteArray) {
+    private fun writeToCallBack(
+        callback: android.speech.tts.SynthesisCallback,
+        pcmData: ByteArray,
+    ) {
         try {
             val maxBufferSize: Int = callback.maxBufferSize
             var offset = 0
-            while (offset < pcmData.size && mTtsManager.isSynthesizing) {
+            while (offset < pcmData.size && mTtsManager!!.isSynthesizing) {
                 val bytesToWrite = maxBufferSize.coerceAtMost(pcmData.size - offset)
                 callback.audioAvailable(pcmData, offset, bytesToWrite)
                 offset += bytesToWrite
             }
         } catch (e: Exception) {
             logE("writeToCallBack: ${e.toString()}")
-            e.printStackTrace()
         }
     }
 
@@ -290,7 +413,6 @@ class SystemTtsService : TextToSpeechService(), TextToSpeechManager.Listener {
         if (mWakeLock != null && mWakeLock?.isHeld == false) {
             mWakeLock?.acquire(60 * 20 * 1000)
         }
-//        GcManager.doGC()
     }
 
     private var mNotificationBuilder: Notification.Builder? = null
@@ -314,7 +436,9 @@ class SystemTtsService : TextToSpeechService(), TextToSpeechManager.Listener {
                     getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
                 mNotificationManager.createNotificationChannel(chan)
             }
-            startForegroundCompat(SystemNotificationConst.ID_SYSTEM_TTS, getNotification())
+            val notifi = getNotification()
+
+            startForegroundCompat(SystemNotificationConst.ID_SYSTEM_TTS, notifi)
             mNotificationDisplayed = true
         }
     }
@@ -365,7 +489,12 @@ class SystemTtsService : TextToSpeechService(), TextToSpeechManager.Listener {
             ), pendingIntentFlags
         )
         val cancelPendingIntent =
-            PendingIntent.getBroadcast(this, 0, Intent(ACTION_NOTIFY_CANCEL), pendingIntentFlags)
+            PendingIntent.getBroadcast(
+                this,
+                0,
+                Intent(ACTION_NOTIFY_CANCEL),
+                pendingIntentFlags
+            )
 
         mNotificationBuilder = Notification.Builder(applicationContext)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -392,7 +521,7 @@ class SystemTtsService : TextToSpeechService(), TextToSpeechManager.Listener {
                 }
 
                 ACTION_NOTIFY_CANCEL -> { // 通知按钮{取消}
-                    if (mTtsManager.isSynthesizing)
+                    if (mTtsManager!!.isSynthesizing)
                         onStop() /* 取消当前播放 */
                     else /* 无播放，关闭通知 */ {
                         stopForeground(true)
@@ -406,130 +535,180 @@ class SystemTtsService : TextToSpeechService(), TextToSpeechManager.Listener {
     inner class LocalReceiver : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
             when (intent?.action) {
-                ACTION_UPDATE_CONFIG -> mTtsManager.load()
-                ACTION_UPDATE_REPLACER -> mTtsManager.loadReplacer()
+                ACTION_UPDATE_CONFIG -> initManager()
+                ACTION_UPDATE_REPLACER -> loadReplacer()
             }
         }
     }
 
-    override fun onRequestStarted(text: String, tts: ITextToSpeechEngine) {
-        if (!AppConst.isSysTtsLogEnabled) return
-        logD(
-            "<br>" + getString(
-                R.string.systts_log_request_audio,
-                "${text.toHtmlBold()}<br> ${tts.toString().toHtmlSmall().toHtmlItalic()}"
-            )
-        )
+    private fun logD(msg: String) = logger.debug(msg)
+    private fun logI(msg: String) = logger.info(msg)
+    private fun logW(msg: String) = logger.warn(msg)
+    private fun logE(msg: String, throwable: Throwable? = null) {
+        updateNotification("⚠️ " + getString(R.string.error), msg)
+        Log.e(TAG, msg, throwable)
+
+        logger.error(msg)
     }
 
-    override fun onError(e: TtsManagerException) {
-        if (!AppConst.isSysTtsLogEnabled) return
+    @Throws(Resources.NotFoundException::class)
+    private fun logE(@StringRes strId: Int, throwable: Throwable? = null) {
+        logE(getString(strId, throwable), throwable)
+    }
+
+    override fun dispatch(event: Event) {
+        when (event) {
+            is ErrorEvent -> errorEvent(event)
+            is NormalEvent -> normalEvent(event)
+            else -> {
+                logE("Unknown event: $event")
+            }
+        }
+    }
+
+    private fun RequestPayload.text(): String {
+        val tag = config.tag
+        val standbyTag = config.standbyConfig?.tag
+        val standbyInfo = if (standbyTag is SystemTtsV2) {
+            "<br>${getString(R.string.systts_standby)} " + standbyTag.displayName
+        } else ""
+
+        val config = if (tag is SystemTtsV2) {
+            tag.displayName + ", ${config.source.voice}, ${config.speechInfo.tagName}" + standbyInfo.toHtmlSmall()
+        } else ""
+        return text.toHtmlBold() + "<br>" + config
+    }
+
+    private fun normalEvent(e: NormalEvent) {
         when (e) {
-            is RequestException -> {
-                when (e.errorCode) {
-                    RequestException.ERROR_CODE_AUDIO_NULL -> {
-                        logE(getString(R.string.systts_log_audio_empty, e.text))
-                    }
-
-                    RequestException.ERROR_CODE_TIMEOUT -> {
-                        logE(getString(R.string.failed_timed_out, SysTtsConfig.requestTimeout))
-                    }
-
-                    else -> {
-                        logE(
-                            getString(
-                                R.string.systts_log_failed,
-                                "(${e.times}) ${e.rootCause ?: e.toString()}"
-                            )
+            is NormalEvent.Request ->
+                if (e.retries > 0)
+                    logW(getString(R.string.systts_log_start_retry, e.retries))
+                else
+                    logI(
+                        getString(
+                            R.string.systts_log_request_audio,
+                            e.request.text()
                         )
-                    }
-                }
+                    )
 
-                updateNotification(
-                    getString(R.string.systts_log_failed, ""),
-                    e.rootCause?.toString() ?: e.toString()
+
+            is NormalEvent.DirectPlay -> logI(
+                getString(
+                    R.string.systts_log_direct_play,
+                    e.request.text()
                 )
+            )
+
+            is NormalEvent.ReadAllFromStream -> {
+                if (e.size > 0)
+                    logI(
+                        getString(
+                            R.string.systts_log_success,
+                            e.size.sizeToReadable(),
+                            "${e.costTime}ms"
+                        ) + "<br> ${e.request.text()}"
+                    )
             }
 
-            is TextReplacerException -> {
-                logE(
+            is NormalEvent.HandleStream ->
+                logI(
                     getString(
-                        R.string.systts_log_replace_failed,
-                        "${e.replaceRule}, ${e.localizedMessage}"
+                        R.string.loading_audio_stream,
+                        e.request.text.limitLength(10)
                     )
                 )
-            }
 
-            is SpeechRuleException -> {
-                logE(getString(R.string.systts_log_text_handle_failed, e.localizedMessage))
-            }
+            is NormalEvent.StandbyTts -> logI(
+                getString(
+                    R.string.use_standby_tts, e.request.text()
+                )
+            )
 
-            is ConfigLoadException -> {
-                logE("配置加载失败: ${e.localizedMessage}")
-            }
-
-            is PlayException -> {
-                if (e.cause is com.github.jing332.common.audio.AudioDecoderException) {
-                    logE("解码失败: ${e.cause?.localizedMessage}")
-                } else
-                    logE("播放失败: ${e.localizedMessage}")
-            }
-
-            else -> {
-                logE("错误: ${e.localizedMessage}")
-                e.printStackTrace()
+            NormalEvent.RequestCountEnded -> logW(getString(R.string.reach_retry_limit))
+            is NormalEvent.BgmCurrentPlaying -> {
+                val name = e.source.path.split("/").lastOrNull() ?: e.source.path
+                logI(getString(R.string.current_playing_bgm, "${e.source.volume}, ${name}"))
             }
         }
     }
 
-    override fun onStartRetry(times: Int) {
-        logW(getString(R.string.systts_log_start_retry, times))
-    }
-
-    override fun onRequestSuccess(
-        text: String,
-        tts: ITextToSpeechEngine,
-        size: Int,
-        costTime: Long,
-        retryTimes: Int
-    ) {
-        if (!AppConst.isSysTtsLogEnabled) return
-
-        val sizeStr = if (size == -1) getString(R.string.unknown) else "${(size / 1024)}kb"
-        logI(
-            getString(
-                R.string.systts_log_success,
-                sizeStr.toHtmlBold(),
-                "${costTime}ms".toHtmlBold()
+    private fun errorEvent(e: ErrorEvent) {
+        when (e) {
+            is ErrorEvent.TextProcessor -> handleTextProcessorError(e.error)
+            is ErrorEvent.Request -> logE(R.string.systts_log_failed, e.cause)
+            is ErrorEvent.RequestTimeout -> logW(
+                getString(
+                    R.string.failed_timed_out,
+                    SysTtsConfig.requestTimeout
+                )
             )
-        )
-        // 重试成功
-        if (retryTimes > 0) updateNotification(
-            getString(R.string.systts_state_synthesizing),
-            mCurrentText
-        )
+
+            ErrorEvent.ConfigEmpty -> {
+                logE(R.string.config_empty_error)
+            }
+
+            is ErrorEvent.BgmLoading -> {
+                logE(R.string.config_load_error, e.cause)
+            }
+
+            is ErrorEvent.Repository -> {
+                logE(R.string.config_load_error, e.cause)
+            }
+
+            is ErrorEvent.DirectPlay -> logE(getString(R.string.systts_log_direct_play, e.cause))
+            is ErrorEvent.ResultProcessor -> e.error.let { processor ->
+                when (processor) {
+                    is StreamProcessorError.AudioDecoding -> logE(
+                        getString(
+                            R.string.audio_decoding_error,
+                            processor.error.toString() + "<br>" + e.request.text()
+                        )
+                    )
+
+                    is StreamProcessorError.AudioSource -> logE(
+                        getString(
+                            R.string.audio_source_error,
+                            processor.error.toString() + "<br>" + e.request.text()
+                        )
+                    )
+
+                    is StreamProcessorError.HandleError -> logE(
+                        getString(
+                            R.string.stream_handle_error,
+                            processor.error.toString() + "<br>" + e.request.text()
+                        )
+                    )
+                }
+            }
+        }
     }
 
-    override fun onPlayFinished(text: String, tts: ITextToSpeechEngine) {
-        if (!AppConst.isSysTtsLogEnabled) return
-        logI(
-            getString(
-                R.string.systts_log_finished_playing,
-                text.limitLength(suffix = "...").toHtmlBold()
+    fun ConfigType.toLocaleString() = when (this) {
+        ConfigType.SINGLE_VOICE -> getString(R.string.single_voice)
+        ConfigType.TAG -> getString(R.string.tag)
+    }
+
+    private fun handleTextProcessorError(err: TextProcessorError) {
+        when (err) {
+            is TextProcessorError.HandleText -> logE(
+                R.string.systts_log_text_handle_failed,
+                err.error
             )
-        )
-    }
 
-    private fun logD(msg: String) = sendLog(LogLevel.DEBUG, msg)
-    private fun logI(msg: String) = sendLog(LogLevel.INFO, msg)
-    private fun logW(msg: String) = sendLog(LogLevel.WARN, msg)
-    private fun logE(msg: String) = sendLog(LogLevel.ERROR, msg)
+            is TextProcessorError.MissingConfig -> {
+                val str = getString(R.string.missing_config, err.type.toLocaleString())
+                longToast(str)
+                logE(str)
+            }
 
-    private fun sendLog(@LogLevel level: Int, msg: String) {
-        Log.d(TAG, "$level, $msg")
-        val intent =
-            Intent(ACTION_ON_LOG).putExtra(KeyConst.KEY_DATA, AppLog(level, msg))
-        AppConst.localBroadcast.sendBroadcast(intent)
+            is TextProcessorError.MissingRule -> logE(
+                getString(
+                    R.string.missing_speech_rule,
+                    err.id
+                )
+            )
+        }
     }
 
 }

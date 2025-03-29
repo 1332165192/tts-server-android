@@ -9,8 +9,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.res.stringResource
 import com.github.jing332.tts_server_android.R
 import com.github.jing332.tts_server_android.compose.systts.ListSortSettingsDialog
-import com.github.jing332.tts_server_android.data.appDb
-import com.github.jing332.tts_server_android.data.entities.replace.ReplaceRule
+import com.github.jing332.database.dbm
+import com.github.jing332.database.entities.replace.ReplaceRule
 
 internal enum class SortType(@StringRes val strId: Int) {
     CREATE_TIME(R.string.created_time_id),
@@ -44,7 +44,7 @@ internal fun SortDialog(onDismissRequest: () -> Unit, list: List<ReplaceRule>) {
                 if (descending) this.reversed() else this
             }
 
-            appDb.replaceRuleDao.update(
+            dbm.replaceRuleDao.update(
                 *sortedList.mapIndexed { i, rule ->
                     rule.copy(order = i)
                 }.toTypedArray()

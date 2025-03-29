@@ -5,12 +5,29 @@ import android.app.Application
 import android.content.Context
 import android.content.Intent
 import android.os.Process
+import androidx.core.content.ContextCompat
+import androidx.core.content.ContextCompat.startActivity
+import androidx.core.graphics.drawable.toBitmap
+import coil3.ImageLoader
+import coil3.SingletonImageLoader
+import coil3.annotation.DelicateCoilApi
+import coil3.asImage
+import coil3.intercept.Interceptor
+import coil3.request.ImageResult
+import coil3.request.SuccessResult
+import coil3.request.crossfade
+import com.github.jing332.compose.widgets.AsyncCircleImageSettings
+import com.github.jing332.database.entities.systts.SystemTtsV2
+import com.github.jing332.tts_server_android.App.Companion.context
+import com.github.jing332.tts_server_android.constant.AppConst
 import com.github.jing332.tts_server_android.model.hanlp.HanlpManager
+import com.petterp.floatingx.FloatingX
+import com.petterp.floatingx.compose.enableComposeSupport
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
-import java.util.*
 import kotlin.properties.Delegates
+import kotlin.text.lowercase
 
 
 val app: App
@@ -29,11 +46,23 @@ class App : Application() {
     }
 
     @SuppressLint("SdCardPath")
-    @OptIn(DelicateCoroutinesApi::class)
+    @OptIn(DelicateCoroutinesApi::class, DelicateCoilApi::class)
     override fun onCreate() {
         super.onCreate()
         instance = this
         CrashHandler(this)
+
+        SystemTtsV2.Converters.json = AppConst.jsonBuilder
+
+        AsyncCircleImageSettings.interceptor = AsyncImageInterceptor
+
+        SingletonImageLoader.setUnsafe(
+            ImageLoader
+                .Builder(context)
+                .crossfade(true)
+                .build()
+        )
+
 
         GlobalScope.launch {
             HanlpManager.initDir(

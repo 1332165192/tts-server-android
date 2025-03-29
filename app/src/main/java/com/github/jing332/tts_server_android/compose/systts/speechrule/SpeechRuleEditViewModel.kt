@@ -1,71 +1,70 @@
 package com.github.jing332.tts_server_android.compose.systts.speechrule
 
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
-import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.github.jing332.tts_server_android.app
+import com.github.jing332.database.dbm
+import com.github.jing332.database.entities.SpeechRule
+import com.github.jing332.database.entities.systts.TtsConfigurationDTO
+import com.github.jing332.script.runtime.console.Console
 import com.github.jing332.tts_server_android.constant.SpeechTarget
-import com.github.jing332.tts_server_android.data.appDb
-import com.github.jing332.tts_server_android.data.entities.SpeechRule
-import com.github.jing332.tts_server_android.model.rhino.ExceptionExt.lineMessage
-import com.github.jing332.script_engine.core.Logger
 import com.github.jing332.tts_server_android.model.rhino.speech_rule.SpeechRuleEngine
-import com.script.ScriptException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
-class SpeechRuleEditViewModel : ViewModel() {
+class SpeechRuleEditViewModel(val app: Application) : AndroidViewModel(app) {
     private val _codeLiveData: MutableLiveData<String> = MutableLiveData()
     val codeLiveData: LiveData<String>
         get() = _codeLiveData
 
     private lateinit var mSpeechRule: SpeechRule
     private lateinit var mRuleEngine: SpeechRuleEngine
-
-    val logger: com.github.jing332.script_engine.core.Logger
-        get() = mRuleEngine.logger
+    private val console = Console()
 
     val speechRule: SpeechRule
         get() = mSpeechRule
 
-    var code: String
-        get() = mRuleEngine.code
-        set(value) {
-            mRuleEngine.code = value
-            mSpeechRule.code = value
-        }
-
     fun init(speechRule: SpeechRule, defaultCode: String) {
-        mSpeechRule = speechRule
+        if (speechRule.code.isBlank()) speechRule.code = defaultCode
+        updateRule(speechRule) }
 
-        if (mSpeechRule.code.isBlank()) mSpeechRule.code = defaultCode
-        mRuleEngine = SpeechRuleEngine(app, mSpeechRule, mSpeechRule.code,
-            com.github.jing332.script_engine.core.Logger()
-        )
-
-        _codeLiveData.value = mSpeechRule.code
+    fun updateRule(rule: SpeechRule) {
+        mSpeechRule = rule
+        _codeLiveData.value = rule.code
+        mRuleEngine = SpeechRuleEngine(app, rule)
+        mRuleEngine.console = console
     }
 
-    fun evalRuleInfo() {
+    fun updateCode(code: String) {
+        updateRule(speechRule.copy(code = code))
+    }
+
+    fun getConsole(): Console {
+        return console
+    }
+
+    fun evalRuleInfo(code: String) {
+        updateCode(code)
         mRuleEngine.evalInfo()
     }
 
     fun debug(text: String) {
-        evalRuleInfo()
+        evalRuleInfo(codeLiveData.value ?: throw IllegalStateException("code is null"))
         viewModelScope.launch(Dispatchers.IO) {
             kotlin.runCatching {
-                logger.i("handleText()...")
+                getConsole().info("handleText()...")
 
                 val rules =
-                    appDb.systemTtsDao.getEnabledListForSort(SpeechTarget.CUSTOM_TAG).map {
-                        it.speechRule.apply { configId = it.id }
+                    dbm.systemTtsV2.getEnabledListForSort(SpeechTarget.TAG).map {
+                        (it.config as TtsConfigurationDTO).speechRule.apply { configId = it.id }
                     }
                 val list = mRuleEngine.handleText(text, rules)
                 try {
                     list.forEach {
                         val texts = mRuleEngine.splitText(it.text)
-                        logger.i(
+                        getConsole().info(
                             "\ntag=${it.tag}, id=${it.id}, text=${it.text.trim()}, splittedTexts=${
                                 texts.joinToString(" | ").trim()
                             }"
@@ -74,12 +73,7 @@ class SpeechRuleEditViewModel : ViewModel() {
                 } catch (_: NoSuchMethodException) {
                 }
             }.onFailure {
-                if (it is ScriptException) {
-                    logger.e(it.lineMessage())
-                } else {
-                    logger.e(it.stackTraceToString())
-                }
-
+                getConsole().error(it.stackTraceToString())
             }
         }
     }

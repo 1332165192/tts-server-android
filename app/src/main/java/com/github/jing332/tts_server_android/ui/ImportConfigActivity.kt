@@ -4,26 +4,26 @@ import android.content.ContentResolver
 import android.content.Intent
 import android.os.Bundle
 import androidx.activity.compose.setContent
-import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.material3.Text
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.res.stringResource
 import com.drake.net.utils.fileName
+import com.github.jing332.common.utils.FileUtils.readAllText
+import com.github.jing332.common.utils.longToast
+import com.github.jing332.compose.widgets.AppSelectionDialog
 import com.github.jing332.tts_server_android.R
+import com.github.jing332.tts_server_android.compose.ComposeActivity
 import com.github.jing332.tts_server_android.compose.systts.LocalImportFilePath
 import com.github.jing332.tts_server_android.compose.systts.LocalImportRemoteUrl
 import com.github.jing332.tts_server_android.compose.theme.AppTheme
-import com.github.jing332.compose.widgets.AppSelectionDialog
 import com.github.jing332.tts_server_android.ui.systts.ImportConfigFactory
 import com.github.jing332.tts_server_android.ui.systts.ImportConfigFactory.gotoEditorFromJS
 import com.github.jing332.tts_server_android.ui.systts.ImportType
-import com.github.jing332.common.utils.FileUtils.readAllText
-import com.github.jing332.common.utils.longToast
 
 
-class ImportConfigActivity : AppCompatActivity() {
+class ImportConfigActivity : ComposeActivity() {
     companion object {
         const val TAG = "ImportConfigActivity"
     }

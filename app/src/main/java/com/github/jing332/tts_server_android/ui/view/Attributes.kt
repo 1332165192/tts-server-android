@@ -29,21 +29,9 @@ object Attributes {
         return typedValue.resourceId
     }
 
-    @get:ColorInt
-    val Context.colorChipStroke: Int
-        get() = colorAttr(com.google.android.material.R.attr.chipStrokeColor)
 
-    @get:ColorInt
-    val Context.colorControlHighlight: Int
-        get() = colorAttr(com.google.android.material.R.attr.colorControlHighlight)
 
-    @get:ColorInt
-    val Context.colorSurface: Int
-        get() = colorAttr(com.google.android.material.R.attr.colorSurface)
 
-    @get:ColorInt
-    val Context.colorOnBackground: Int
-        get() = colorAttr(com.google.android.material.R.attr.colorOnBackground)
 
     @get:DrawableRes
     val Context.selectableItemBackground: Int

@@ -1,11 +1,10 @@
 package com.github.jing332.common
 
 import android.graphics.Color
+import android.util.Log
 import androidx.annotation.IntDef
 
 @IntDef(
-    LogLevel.PANIC,
-    LogLevel.FATIL,
     LogLevel.ERROR,
     LogLevel.WARN,
     LogLevel.INFO,
@@ -14,41 +13,42 @@ import androidx.annotation.IntDef
 )
 annotation class LogLevel {
     companion object {
-        const val PANIC = 0
-        const val FATIL = 1
-        const val ERROR = 2
-        const val WARN = 3
-        const val INFO = 4
-        const val DEBUG = 5
-        const val TRACE = 6
+        const val ERROR = Log.ERROR
+        const val WARN = Log.WARN
+        const val INFO = Log.INFO
+        const val DEBUG = Log.DEBUG
+        const val TRACE = Log.VERBOSE
+    }
+}
 
-        fun toColor(level: Int): Int {
-            return when {
-                level == WARN -> {
-                    Color.rgb(255, 215, 0) /* 金色 */
-                }
+fun Int.toArgb(isDarkTheme: Boolean = false): Long =
+    when (this) {
+        LogLevel.TRACE -> if (isDarkTheme) 0xFFB0BEC5 else 0xFF9E9E9E
+        LogLevel.DEBUG -> if (isDarkTheme) 0xFF64B5F6 else 0xFF2196F3
+        LogLevel.INFO -> if (isDarkTheme) 0xFF81C784 else 0xFF4CAF50
+        LogLevel.WARN -> if (isDarkTheme) 0xFFFFD54F else 0xFFFFC107
+        LogLevel.ERROR -> if (isDarkTheme) 0xFFE57373 else 0xFFF44336
+        else -> if (isDarkTheme) Color.WHITE.toLong() else Color.BLACK.toLong()
+    }
 
-                level <= ERROR -> {
-                    Color.RED
-                }
+fun String.toLogLevel():Int{
+    return when (this.first().toString()) {
+        "V" -> LogLevel.TRACE
+        "D" -> LogLevel.DEBUG
+        "I" -> LogLevel.INFO
+        "W" -> LogLevel.WARN
+        "E" -> LogLevel.ERROR
+        else -> LogLevel.INFO
+    }
+}
 
-                else -> {
-                    Color.GRAY
-                }
-            }
-        }
-
-        fun toString(level: Int): String {
-            when (level) {
-                PANIC -> return "宕机"
-                FATIL -> return "致命"
-                ERROR -> return "错误"
-                WARN -> return "警告"
-                INFO -> return "信息"
-                DEBUG -> return "调试"
-                TRACE -> return "详细"
-            }
-            return level.toString()
-        }
+fun Int.toLogLevelChar(): String {
+    return when (this) {
+        LogLevel.TRACE -> "V"
+        LogLevel.DEBUG -> "D"
+        LogLevel.INFO -> "I"
+        LogLevel.WARN -> "W"
+        LogLevel.ERROR -> "E"
+        else -> ""
     }
 }

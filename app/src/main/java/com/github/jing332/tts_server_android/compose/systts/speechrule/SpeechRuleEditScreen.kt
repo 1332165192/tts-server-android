@@ -16,15 +16,16 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.asFlow
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.github.jing332.common.utils.FileUtils.readAllText
+import com.github.jing332.compose.widgets.TextFieldDialog
+import com.github.jing332.database.entities.SpeechRule
 import com.github.jing332.tts_server_android.R
 import com.github.jing332.tts_server_android.compose.LocalNavController
 import com.github.jing332.tts_server_android.compose.codeeditor.CodeEditorScreen
 import com.github.jing332.tts_server_android.compose.codeeditor.LoggerBottomSheet
-import com.github.jing332.compose.widgets.TextFieldDialog
+import com.github.jing332.tts_server_android.compose.codeeditor.string
 import com.github.jing332.tts_server_android.conf.SpeechRuleConfig
-import com.github.jing332.tts_server_android.data.entities.SpeechRule
 import com.github.jing332.tts_server_android.ui.view.AppDialogs.displayErrorDialog
-import com.github.jing332.common.utils.FileUtils.readAllText
 import io.github.rosemoe.sora.widget.CodeEditor
 
 @Composable
@@ -64,9 +65,9 @@ internal fun SpeechRuleEditScreen(
 
     var showDebugLogger by remember { mutableStateOf(false) }
     if (showDebugLogger) {
-        LoggerBottomSheet(logger = vm.logger, onDismissRequest = { showDebugLogger = false }) {
+        LoggerBottomSheet(registry = vm.getConsole(), onDismissRequest = { showDebugLogger = false }) {
             runCatching {
-                vm.code = codeEditor!!.text.toString()
+                vm.updateCode(codeEditor!!.string())
                 vm.debug(SpeechRuleConfig.textParam.value)
             }.onFailure {
                 context.displayErrorDialog(it)
@@ -80,8 +81,7 @@ internal fun SpeechRuleEditScreen(
         onDebug = { showDebugLogger = true },
         onSave = {
             runCatching {
-                vm.code = codeEditor!!.text.toString()
-                vm.evalRuleInfo()
+                vm.evalRuleInfo(codeEditor!!.string())
 
                 onSave(vm.speechRule)
                 navController.popBackStack()
@@ -91,7 +91,8 @@ internal fun SpeechRuleEditScreen(
         },
         onUpdate = { codeEditor = it },
         onSaveFile = {
-            "ttsrv-speechRule-${vm.speechRule.name}.js" to codeEditor!!.text.toString().toByteArray()
+            "ttsrv-speechRule-${vm.speechRule.name}.js" to codeEditor!!.text.toString()
+                .toByteArray()
         }
     ) { dismiss ->
         DropdownMenuItem(

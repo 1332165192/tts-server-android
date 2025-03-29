@@ -4,41 +4,13 @@ on:
   workflow_dispatch:
 
 jobs:
-  go-lib:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-go@v5
-        with:
-          go-version: 1.23
-          cache-dependency-path: ${{ github.workspace }}/tts-server-lib
-
-      - name: Build tts-server-lib
-        run: |
-          cd $GITHUB_WORKSPACE/.github/scripts
-          chmod +x *.sh
-          ./build_gojni.sh
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: tts-server-lib
-          path: lib-gojni-aar/*.aar
-
   build:
-    needs: go-lib
     runs-on: ubuntu-latest
     env:
       outputs_dir: "${{ github.workspace }}/app/build/outputs"
 
     steps:
       - uses: actions/checkout@v4
-
-      - uses: actions/download-artifact@v4
-        with:
-            name: tts-server-lib
-            path: ${{ github.workspace }}/lib-gojni-aar
-
       - uses: actions/setup-java@v4
         with:
           distribution: temurin

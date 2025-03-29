@@ -42,7 +42,7 @@ fun LinkUploadSelectionDialog(onDismissRequest: () -> Unit, json: String) {
             title = { Text(stringResource(id = R.string.choose_an_upload_target)) },
             value = Any(),
             values = targetList,
-            entries = targetList.map { it.funcName },
+            entries = targetList.map { it.name },
             onClick = { value, _ ->
                 scope.launch {
                     runCatching {
